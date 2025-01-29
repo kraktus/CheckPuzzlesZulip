@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3
-#coding: utf-8
+# coding: utf-8
 # Licence: GNU AGPLv3
 
 """"""
@@ -11,18 +11,19 @@ import json
 import logging
 import logging.handlers
 import os
-import requests
 import sys
 
 from argparse import RawTextHelpFormatter
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from collections import deque
-from dotenv import load_dotenv
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
+
+from dotenv import load_dotenv
+
+from .models import setup_db
+
 
 #############
 # Constants #
@@ -31,13 +32,10 @@ from typing import Optional, List, Union, Tuple
 load_dotenv()
 
 LOG_PATH = f"{__file__}.log"
-RETRY_STRAT = Retry(
-    total=5,
-    backoff_factor=1,
-    status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET"]
-)
 ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
+
+ZULIP_CHANNEL = os.getenv("ZULIP_CHANNEL")
+
 
 ########
 # Logs #
@@ -48,7 +46,9 @@ log.setLevel(logging.DEBUG)
 format_string = "%(asctime)s | %(levelname)-8s | %(message)s"
 
 # 125000000 bytes = 12.5Mb
-handler = logging.handlers.RotatingFileHandler(LOG_PATH, maxBytes=12500000, backupCount=3, encoding="utf8")
+handler = logging.handlers.RotatingFileHandler(
+    LOG_PATH, maxBytes=12500000, backupCount=3, encoding="utf8"
+)
 handler.setFormatter(logging.Formatter(format_string))
 handler.setLevel(logging.DEBUG)
 log.addHandler(handler)
@@ -63,6 +63,7 @@ log.addHandler(handler_2)
 ###########
 # Classes #
 ###########
+
 
 class Req:
 
@@ -80,19 +81,17 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
         doc_string += f"{name_cmd}: {func.__doc__}\n\n"
     return doc_string
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
-    # commands = {
-    # "cmd": cmd_function,
-    # }
-    # parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    # args = parser.parse_args()
-    # commands[args.command]()
+    # zulip lib is sync, so use sync as well for python-chess
+    setup_db()
+
+
 
 ########
 # Main #
 ########
 
 if __name__ == "__main__":
-    print('#'*80)
+    print("#" * 80)
     main()
