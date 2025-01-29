@@ -1,4 +1,4 @@
-from peewee import *
+from peewee import Model, FixedCharField, CharField, IntegerField, TextField, BooleanField, AutoField, SqliteDatabase
 
 db = SqliteDatabase("check-puzzles-zulip.db")
 

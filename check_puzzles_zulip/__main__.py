@@ -20,8 +20,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
 
-from dotenv import load_dotenv
-
 from .models import setup_db
 
 
@@ -29,12 +27,7 @@ from .models import setup_db
 # Constants #
 #############
 
-load_dotenv()
-
 LOG_PATH = f"{__file__}.log"
-ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
-
-ZULIP_CHANNEL = os.getenv("ZULIP_CHANNEL")
 
 
 ########
@@ -63,23 +56,6 @@ log.addHandler(handler_2)
 ###########
 # Classes #
 ###########
-
-
-class Req:
-
-    def __init__(self) -> None:
-        http = requests.Session()
-        http.mount("https://", ADAPTER)
-        http.mount("http://", ADAPTER)
-        self.http = http
-
-
-def doc(dic: Dict[str, Callable[..., Any]]) -> str:
-    """Produce documentation for every command based on doc of each function"""
-    doc_string = ""
-    for name_cmd, func in dic.items():
-        doc_string += f"{name_cmd}: {func.__doc__}\n\n"
-    return doc_string
 
 
 def main() -> None:

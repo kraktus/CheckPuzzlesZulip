@@ -1,4 +1,4 @@
-from check_puzzles_zulip import Extractor
+import check_puzzles_zulip
 
 import unittest
 import datetime
@@ -11,4 +11,6 @@ class Test(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    print("ddd")
     unittest.main()
+    print("fp")
