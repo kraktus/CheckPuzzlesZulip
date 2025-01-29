@@ -1,9 +1,9 @@
 import chess
 
-from .models import PuzzleReportDb
+from .models import PuzzleReport
 
 
-def check_report(report: PuzzleReportDb) -> None:
+def check_report(report: PuzzleReport) -> None:
     board = chess.Board()
     for move in board.legal_moves:
         board.push(move)

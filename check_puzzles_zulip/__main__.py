@@ -21,7 +21,7 @@ from pathlib import Path
 
 from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
-from .models import db, setup_db, PuzzleReportDb
+from .models import db, setup_db, PuzzleReport
 
 
 #############
@@ -70,9 +70,9 @@ def fetch_reports() -> None:
     from .zulip import ZulipClient
 
     client = ZulipClient()
-    reportDbs = [x.to_model() for x in client.get_puzzle_reports()]
+    reports = client.get_puzzle_reports()
     with db.atomic():
-        PuzzleReportDb.bulk_create(reportDbs)
+        PuzzleReport.bulk_create(reports)
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess

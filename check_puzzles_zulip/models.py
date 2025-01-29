@@ -19,34 +19,7 @@ class BaseModel(Model):
     class Meta:
         database = db
 
-
-@dataclass(frozen=True)
-class PuzzleReport:
-    reporter: str
-    puzzle_id: str
-    report_version: int
-    sf_version: str
-    move: int
-    details: str
-    issues: str
-    local_evaluation: str
-    zulip_message_id: int
-
-    def to_model(self):
-        return PuzzleReportDb(
-            reporter=self.reporter,
-            puzzle_id=self.puzzle_id,
-            report_version=self.report_version,
-            sf_version=self.sf_version,
-            move=self.move,
-            details=self.details,
-            issues=self.issues,
-            local_evaluation=self.local_evaluation,
-            zulip_message_id=self.zulip_message_id,
-        )
-
-
-class PuzzleReportDb(Model):
+class PuzzleReport(Model):
     reporter = CharField()
     puzzle_id = FixedCharField(
         5
@@ -113,4 +86,4 @@ class Puzzle(BaseModel):
 
 
 def setup_db():
-    db.create_tables([PuzzleReportDb, Puzzle])
+    db.create_tables([PuzzleReport, Puzzle])
