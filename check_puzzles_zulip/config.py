@@ -14,6 +14,7 @@ def get_env_variable(var_name):
         )
         raise KeyError(error_msg)
 
+STOCKFISH = get_env_variable("STOCKFISH")
 
 ZULIP_CHANNEL = get_env_variable("ZULIP_CHANNEL")
 ZULIP_TOPIC = get_env_variable("ZULIP_TOPIC")

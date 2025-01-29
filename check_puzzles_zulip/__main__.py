@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
 from .models import db, setup_db, PuzzleReport
+from .zulip import ZulipClient
 
 
 #############
@@ -67,7 +68,6 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
     return doc_string
 
 def fetch_reports() -> None:
-    from .zulip import ZulipClient
 
     client = ZulipClient()
     reports = client.get_puzzle_reports()

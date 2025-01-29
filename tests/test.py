@@ -1,7 +1,9 @@
+from chess.engine import Score, Cp, Mate
+
 from check_puzzles_zulip.parser import parse_report_v5_onward
 from check_puzzles_zulip.models import PuzzleReport
 from check_puzzles_zulip.lichess import _fetch_puzzle
-
+from check_puzzles_zulip.check import _similar_eval
 
 import unittest
 import datetime
@@ -102,6 +104,79 @@ class Test(unittest.TestCase):
         self.assertEqual(puzzle.solution, "d5c6 e4c3 c6b7 c3b5 c1d2")
         self.assertEqual(puzzle.themes, "advancedPawn advantage long sacrifice opening discoveredAttack")
         self.assertEqual(puzzle.game_pgn, "e4 c5 Nf3 Nc6 Bb5 d6 d4 Nf6 d5 Qa5+ Nc3 Nxe4")
+
+
+# describe('similarEvals', () => {
+#   // taken from https://github.com/lichess-org/tactics/issues/101
+#   test.each<[Color, number, number]>([
+#     ['black', -9600, -3500],
+#     ['white', 400, 350],
+#     ['black', -650, -630],
+#     ['black', -560, -460],
+#     ['black', -850, -640],
+#     ['black', -6500, -600],
+#     ['white', 400, 350],
+#     ['black', -6500, -6300],
+#     ['black', -560, -460],
+#     ['black', -850, -640],
+#     ['black', -6510, -600],
+#   ])('be similar', (color, bestEval, secondBestEval) => {
+#     expect(similarEvalsCp(color, bestEval, secondBestEval)).toBe(true);
+#   });
+
+
+# from lila/ui/ceval/tests/winningChances.test.ts
+    def test_similar_eval(self):
+        self.assertTrue(_similar_eval(Cp(9600), Cp(3500)))
+        self.assertTrue(_similar_eval(Cp(400), Cp(350)))
+        self.assertTrue(_similar_eval(Cp(650), Cp(630)))
+        self.assertTrue(_similar_eval(Cp(560), Cp(460)))
+        self.assertTrue(_similar_eval(Cp(850), Cp(640)))
+        self.assertTrue(_similar_eval(Cp(6500), Cp(600)))
+        self.assertTrue(_similar_eval(Cp(400), Cp(350)))
+        self.assertTrue(_similar_eval(Cp(6500), Cp(6300)))
+        self.assertTrue(_similar_eval(Cp(560), Cp(460)))
+        self.assertTrue(_similar_eval(Cp(850), Cp(640)))
+        self.assertTrue(_similar_eval(Cp(6510), Cp(600)))
+
+    # from lila/ui/ceval/tests/winningChances.test.ts
+    def test_diff_evals(self):
+#   // taken from the list of reported puzzles on zulip, and subjectively considered
+#   // false positives
+#   test.each<[Color, number, number]>([
+#     ['white', 265, -3],
+#     ['white', 269, 0],
+#     ['white', 322, -6],
+#     ['white', 778, 169],
+#     ['black', -293, -9],
+#     ['black', -179, 61],
+#     ['black', -816, -357],
+#     ['black', -225, -51],
+#   ])('be different', (color, bestEval, secondBestEval) => {
+#     expect(similarEvalsCp(color, bestEval, secondBestEval)).toBe(false);
+#   });
+
+#   // https://lichess.org/training/ZIRBc
+#   // It is unclear if this should be a false positive, but discussing with a few members
+#   // seems to be good enough to be considered a fp for now.
+#   test.each<[Color, EvalScore, EvalScore]>([
+#     ['black', { cp: undefined, mate: -16 }, { cp: -420, mate: undefined }],
+#   ])('be different mate/cp', (color, bestEval, secondBestEval) => {
+#     expect(winningChances.areSimilarEvals(color, bestEval, secondBestEval)).toBe(false);
+#   });
+# });
+
+# convert to python
+        self.assertFalse(_similar_eval(Cp(265), Cp(-3)))
+        self.assertFalse(_similar_eval(Cp(269), Cp(0)))
+        self.assertFalse(_similar_eval(Cp(322), Cp(-6)))
+        self.assertFalse(_similar_eval(Cp(778), Cp(169)))
+        self.assertFalse(_similar_eval(Cp(293), Cp(9)))
+        self.assertFalse(_similar_eval(Cp(179), Cp(-61)))
+        self.assertFalse(_similar_eval(Cp(816), Cp(357)))
+        self.assertFalse(_similar_eval(Cp(225), Cp(51)))
+
+        self.assertFalse(_similar_eval(Mate(16), Cp(420)))
 
 
 if __name__ == "__main__":
