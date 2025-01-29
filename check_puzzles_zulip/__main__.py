@@ -63,7 +63,6 @@ def main() -> None:
     setup_db()
 
 
-
 ########
 # Main #
 ########

@@ -1,5 +1,7 @@
 from peewee import Model, FixedCharField, CharField, IntegerField, TextField, BooleanField, AutoField, SqliteDatabase
 
+from dataclasses import dataclass
+
 db = SqliteDatabase("check-puzzles-zulip.db")
 
 
@@ -8,17 +10,46 @@ class BaseModel(Model):
         database = db
 
 
-# xxx reported wfHlQ because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484
-class PuzzleReport(BaseModel):
+@dataclass(frozen=True)
+class PuzzleReport:
+    reporter: str
+    puzzle_id: str
+    report_version: int
+    sf_version: str
+    move: int
+    details: str
+    issues: str
+    local_evaluation: str
+    zulip_message_id: int
+
+    def to_model(self):
+        return PuzzleReportDb(
+            reporter=self.reporter,
+            puzzle_id=self.puzzle_id,
+            report_version=self.report_version,
+            sf_version=self.sf_version,
+            move=self.move,
+            details=self.details,
+            issues=self.issues,
+            local_evaluation=self.local_evaluation,
+            zulip_message_id=self.zulip_message_id,
+        )
+
+class PuzzleReportDb(BaseModel):
     _id = AutoField(primary_key=True)
+    reporter = CharField()
     puzzle_id = FixedCharField(5) # maybe multiple reports about the same puzzle but not for the same move
+    report_version = IntegerField()
+    # not present before v5
     sf_version = CharField()
     zulip_message_id = CharField()
     move = IntegerField()  # move, not plies, starting from 1
     # for future compatibility and debugging
-    report_text = TextField()
+    details = TextField()
     issues = TextField()
-    checked = BooleanField()
+    # cache for local sf eval at the end, to inspect
+    # if empty, has not been analyzed
+    local_evaluation = TextField()
 
 
 # taken from the lichess api
