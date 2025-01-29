@@ -1,9 +1,10 @@
-from chess.engine import Score, Cp, Mate
+from chess.engine import Score, Cp, Mate, PovScore
 
 from check_puzzles_zulip.parser import parse_report_v5_onward
 from check_puzzles_zulip.models import PuzzleReport
 from check_puzzles_zulip.lichess import _fetch_puzzle
-from check_puzzles_zulip.check import _similar_eval
+from check_puzzles_zulip.check import _similar_eval, Checker
+from check_puzzles_zulip.models import setup_db
 
 import unittest
 import datetime
@@ -103,6 +104,7 @@ class Test(unittest.TestCase):
     #         "initialPly": 11
     #     }
     # }
+    @unittest.skip("no need for request each time, todo mock")
     def test_fetch_puzzle(self):
         puzzle = _fetch_puzzle("3z2st")
         self.assertEqual(puzzle._id, "3z2st")
@@ -186,6 +188,100 @@ class Test(unittest.TestCase):
         self.assertFalse(_similar_eval(Cp(225), Cp(51)))
 
         self.assertFalse(_similar_eval(Mate(16), Cp(420)))
+
+    def test_cheker(self):
+        # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
+        db = setup_db(":memory:")
+        report = PuzzleReport(
+            reporter="xxx",
+            puzzle_id="XGeME",
+            report_version=6,
+            sf_version="SF 17 · 79MB",
+            move=44,
+            details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
+            issues="",
+            local_evaluation="",
+            zulip_message_id=1,
+        )
+
+        dict_info_mock = [
+            {
+                "string": "NNUE evaluation using nn-37f18f62d772.nnue (6MiB, (22528, 128, 15, 32, 1))",
+                "depth": 29,
+                "seldepth": 41,
+                "multipv": 1,
+                "score": PovScore(Cp(512), True),
+                "nodes": 25000243,
+                "nps": 827521,
+                "hashfull": 998,
+                "tbhits": 0,
+                "time": 30.211,
+                "currmove": {
+                    "from_square": 34,
+                    "to_square": 42,
+                    "promotion": None,
+                    "drop": None,
+                },
+                "currmovenumber": 4,
+            },
+            {
+                "depth": 29,
+                "seldepth": 56,
+                "multipv": 2,
+                "score": PovScore(Cp(458), True),
+                "nodes": 25000243,
+                "nps": 827521,
+                "hashfull": 998,
+                "tbhits": 0,
+                "time": 30.211,
+            },
+            {
+                "depth": 29,
+                "seldepth": 52,
+                "multipv": 3,
+                "score": PovScore(Cp(48), True),
+                "nodes": 25000243,
+                "nps": 827521,
+                "hashfull": 998,
+                "tbhits": 0,
+                "time": 30.211,
+            },
+            {
+                "depth": 29,
+                "seldepth": 11,
+                "multipv": 4,
+                "score": PovScore(Cp(34), True),
+                "nodes": 25000243,
+                "nps": 827521,
+                "hashfull": 998,
+                "tbhits": 0,
+                "time": 30.211,
+                "upperbound": True,
+            },
+            {
+                "depth": 28,
+                "seldepth": 49,
+                "multipv": 5,
+                "score": PovScore(Cp(33), True),
+                "nodes": 25000243,
+                "nps": 827521,
+                "hashfull": 998,
+                "tbhits": 0,
+                "time": 30.211,
+            },
+        ]
+
+        checker = Checker()
+        # mock checker.engine.analyse and return dict_info instead
+        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock
+        report2 = checker.check_report(report)
+        assert isinstance(report2, PuzzleReport)
+        self.assertTrue(report2.has_multiple_solutions)
+        # self.assertEqual(
+        #     report2.local_evaluation,
+        #     "a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
+        # )
+        db.close()
 
 
 if __name__ == "__main__":

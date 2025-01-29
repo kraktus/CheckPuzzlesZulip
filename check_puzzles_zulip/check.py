@@ -1,5 +1,7 @@
 import json
 import math
+import logging
+import datetime
 
 import chess
 import chess.engine
@@ -10,33 +12,46 @@ from chess.engine import Score, Limit
 
 from .lichess import get_puzzle
 from .models import PuzzleReport
-from .config import STOCKFISH
+from .config import STOCKFISH, setup_logger
+
+log = setup_logger(__file__)
 
 
-class Checker(chess.engine.SimpleEngine):
+class Checker:
 
     def __init__(self):
-        self.popen_uci(STOCKFISH)
+        self.engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH)
 
-    def check_report(self, report: PuzzleReport) -> None:
+    def check_report(self, report: PuzzleReport) -> PuzzleReport | None:
         puzzle = get_puzzle(str(report.puzzle_id))
         board = chess.Board()
         moves = str(puzzle.game_pgn).split()
         for move in moves:
-            board.push_uci(move)
+            board.push_san(move)
+        print("sol ", str(puzzle.solution).split())
+        for move in str(puzzle.solution).split():
+            log.debug(f"Checking move {board.ply()}, {board.fen()}")
             # check if ply is the reported one
-            if board.ply() == (int(report.move) * 2 + 1):  # type: ignore
+            if board.ply() == (int(report.move) * 2):  # type: ignore
+                log.debug(f"Checking move {board.ply()}, {board.fen()}")
                 [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(board)
                 report.has_multiple_solutions = has_multi_sol
                 report.local_evaluation = eval_dump  # type: ignore
-                report.save()
-                return
+                log.debug(f"Reported: {eval_dump}")
+                return report
+            board.push_uci(move)
 
     # return HasMultipleSolutions if the position has multiple solutions
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
-        infos = self.analyse(board, multipv=5, limit=Limit(depth=50, nodes=25_000_000))
+        log.debug(f"Analyzing position {board.fen()}")
+        infos = self.engine.analyse(
+            board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
+        )
+        eval_dump = json.dumps(infos, default=default_converter)
+        log.debug("eval_dump", eval_dump)
         # sort by score descending
-        infos.sort(key=lambda info: info["score"], reverse=True)  # type: ignore
+        color = board.turn
+        infos.sort(key=lambda info: info["score"].pov(color), reverse=True)  # type: ignore
         # chechking both scores from white should be enough to know if the position has multiple solutions
         # even if the puzzle is from black perspective
         bestEval, secondBestEval = _get_white_score(infos[0]), _get_white_score(
@@ -45,7 +60,16 @@ class Checker(chess.engine.SimpleEngine):
         assert (
             bestEval is not None and secondBestEval is not None
         ), "bestEval and secondBestEval should not be None"
-        return _similar_eval(bestEval, secondBestEval), json.dumps(infos)
+        return _similar_eval(bestEval, secondBestEval), eval_dump
+
+
+def default_converter(obj):
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif hasattr(obj, "__dict__"):
+        return obj.__dict__
+    else:
+        return str(obj)  # Fallback to string representation
 
 
 def _get_white_score(info: chess.engine.InfoDict) -> Score | None:

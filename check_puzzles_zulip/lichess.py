@@ -1,24 +1,14 @@
+import logging
 import requests
 
 from .models import Puzzle
+from .config import setup_logger
 
-
-# class Puzzle(BaseModel):
-#     _id = FixedCharField(5, primary_key=True)
-#     fen = CharField()
-#     # initial_move = CharField()
-#     initialPly = IntegerField()
-#     solution = CharField()
-#     # rating = IntegerField()
-#     # popularity = IntegerField()
-#     themes = TextField()
-#     # game_url = CharField()
-#     # game_id = CharField()
-#     game_pgn = TextField()
+log = setup_logger(__file__)
 
 
 def get_puzzle(puzzle_id: str) -> Puzzle:
-    puzzle = Puzzle.objects.get_or_none(Puzzle._id == puzzle_id)  # type: ignore
+    puzzle = Puzzle.get_or_none(Puzzle._id == puzzle_id)  # type: ignore
     if puzzle is not None:
         return puzzle
     puzzle = _fetch_puzzle(puzzle_id)

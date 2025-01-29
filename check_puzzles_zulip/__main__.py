@@ -21,39 +21,11 @@ from pathlib import Path
 
 from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
-from .models import db, setup_db, PuzzleReport
+from .models import setup_db, PuzzleReport
 from .zulip import ZulipClient
+from .config import setup_logger
 
-
-#############
-# Constants #
-#############
-
-LOG_PATH = f"{__file__}.log"
-
-
-########
-# Logs #
-########
-
-log = logging.getLogger(__file__)
-log.setLevel(logging.DEBUG)
-format_string = "%(asctime)s | %(levelname)-8s | %(message)s"
-
-# 125000000 bytes = 12.5Mb
-handler = logging.handlers.RotatingFileHandler(
-    LOG_PATH, maxBytes=12500000, backupCount=3, encoding="utf8"
-)
-handler.setFormatter(logging.Formatter(format_string))
-handler.setLevel(logging.DEBUG)
-log.addHandler(handler)
-
-handler_2 = logging.StreamHandler(sys.stdout)
-handler_2.setFormatter(logging.Formatter(format_string))
-handler_2.setLevel(logging.INFO)
-if __debug__:
-    handler_2.setLevel(logging.DEBUG)
-log.addHandler(handler_2)
+log = setup_logger(__file__)
 
 ###########
 # Classes #
@@ -68,7 +40,7 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
     return doc_string
 
 
-def fetch_reports() -> None:
+def fetch_reports(db) -> None:
 
     client = ZulipClient()
     reports = client.get_puzzle_reports()
@@ -78,7 +50,7 @@ def fetch_reports() -> None:
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
-    setup_db()
+    db = setup_db()
     parser = argparse.ArgumentParser()
     # verbose
     parser.add_argument(
@@ -105,11 +77,12 @@ def main() -> None:
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(func=lambda args: commands[args.command]())
+    run_parser.set_defaults(func=lambda args: commands[args.command](db))
     args = parser.parse_args()
-    handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    # log.handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
     log.debug(f"args: {args}")
     args.func(args)
+    db.close()
 
 
 ########

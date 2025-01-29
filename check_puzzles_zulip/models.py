@@ -13,7 +13,7 @@ from peewee import (
 
 from dataclasses import dataclass
 
-db = SqliteDatabase("check-puzzles-zulip.db")
+db = SqliteDatabase(None)
 
 
 class BaseModel(Model):
@@ -21,7 +21,7 @@ class BaseModel(Model):
         database = db
 
 
-class PuzzleReport(Model):
+class PuzzleReport(BaseModel):
     reporter = CharField()
     puzzle_id = FixedCharField(
         5
@@ -40,8 +40,7 @@ class PuzzleReport(Model):
     issues = BitField()
     has_multiple_solutions = issues.flag(1)
 
-    class Meta:
-        db = db
+    class Meta:  # type: ignore
         primary_key = CompositeKey("puzzle_id", "move")
 
 
@@ -89,5 +88,8 @@ class Puzzle(BaseModel):
     game_pgn = TextField()
 
 
-def setup_db():
+def setup_db(name: str = "check_puzzles_zulip.db"):
+    db.init(name)
+    db.connect()
     db.create_tables([PuzzleReport, Puzzle])
+    return db
