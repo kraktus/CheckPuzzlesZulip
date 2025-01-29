@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
 
-from .models import setup_db
+from .models import setup_db, PuzzleReportDb
 
 
 #############
@@ -58,9 +58,58 @@ log.addHandler(handler_2)
 ###########
 
 
+def doc(dic: Dict[str, Callable[..., Any]]) -> str:
+    """Produce documentation for every command based on doc of each function"""
+    doc_string = ""
+    for name_cmd, func in dic.items():
+        doc_string += f"{name_cmd}: {func.__doc__}\n\n"
+    return doc_string
+
+
+# Cannot be defined before due to functions
+commands = {
+    "fetch": fetch_reports,
+    "check": "todo",
+    "exporr": "todo",
+}
+
+
+def fetch_reports() -> None:
+    from .zulip import ZulipClient
+
+    client = ZulipClient()
+    reportDbs = [x.to_model() for x in client.get_puzzle_reports()]
+    with db.atomic():
+        PuzzleReportDb.bulk_create(reportDbs)
+
+
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
     setup_db()
+    parser = argparse.ArgumentParser()
+    # verbose
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="increase output verbosity",
+        default=False,
+    )
+
+    # add arguments to subcommand
+    subparser = parser.add_subparsers(required=True)
+
+    run_parser = subparser.add_parser(
+        "run",
+        help="Simple commands that need no arguments",
+        formatter_class=RawTextHelpFormatter,
+    )
+    run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
+    run_parser.set_defaults(func=argparse_run)
+    args = parser.parse_args()
+    handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    log.debug(f"args: {args}")
+    args.func(args)
 
 
 ########

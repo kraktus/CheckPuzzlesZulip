@@ -1,4 +1,14 @@
-from peewee import Model, FixedCharField, CharField, IntegerField, TextField, BooleanField, AutoField, SqliteDatabase
+from peewee import (
+    Model,
+    FixedCharField,
+    CompositeKey,
+    CharField,
+    IntegerField,
+    TextField,
+    BooleanField,
+    AutoField,
+    SqliteDatabase,
+)
 
 from dataclasses import dataclass
 
@@ -35,10 +45,12 @@ class PuzzleReport:
             zulip_message_id=self.zulip_message_id,
         )
 
+
 class PuzzleReportDb(BaseModel):
-    _id = AutoField(primary_key=True)
     reporter = CharField()
-    puzzle_id = FixedCharField(5) # maybe multiple reports about the same puzzle but not for the same move
+    puzzle_id = FixedCharField(
+        5
+    )  # maybe multiple reports about the same puzzle but not for the same move
     report_version = IntegerField()
     # not present before v5
     sf_version = CharField()
@@ -50,6 +62,9 @@ class PuzzleReportDb(BaseModel):
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
     local_evaluation = TextField()
+
+    class Meta:
+        primary_key = CompositeKey("puzzle_id", "move")
 
 
 # taken from the lichess api
@@ -113,7 +128,6 @@ class Puzzle(BaseModel):
     # game_moves_truncated = IntegerField()
     # game_moves_truncated_reason = CharField
 
+
 def setup_db():
     db.create_tables([PuzzleReport, Puzzle])
-
-
