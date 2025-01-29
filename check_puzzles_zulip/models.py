@@ -104,30 +104,12 @@ class PuzzleReportDb(Model):
 class Puzzle(BaseModel):
     _id = FixedCharField(5, primary_key=True)
     fen = CharField()
-    # initial_move = CharField()
     initialPly = IntegerField()
     solution = CharField()
-    # rating = IntegerField()
-    # popularity = IntegerField()
+    # themes, separated by spaces
     themes = TextField()
-    # game_url = CharField()
-    # game_id = CharField()
+    # moves, separated by spaces
     game_pgn = TextField()
-    # game_fen = CharField()
-    # game_moves = IntegerField()
-    # game_rating = IntegerField()
-    # game_result = CharField()
-    # game_date = DateTimeField()
-    # game_turns = IntegerField()
-    # game_speed = CharField()
-    # game_perf = CharField()
-    # game_opening = CharField()
-    # game_eco = CharField()
-    # game_analyzed = BooleanField()
-    # game_annotated = BooleanField()
-    # game_truncated = BooleanField()
-    # game_moves_truncated = IntegerField()
-    # game_moves_truncated_reason = CharField
 
 
 def setup_db():

@@ -1,5 +1,7 @@
 from check_puzzles_zulip.parser import parse_report_v5_onward
 from check_puzzles_zulip.models import PuzzleReport
+from check_puzzles_zulip.lichess import _fetch_puzzle
+
 
 import unittest
 import datetime
@@ -41,6 +43,67 @@ class Test(unittest.TestCase):
             zulip_message_id=zulip_message_id,
         )
         self.assertEqual(parse_report_v5_onward(txt, zulip_message_id), expected)
+
+# {
+#     "game":
+#     {
+#         "id": "hxZj9l1g",
+#         "perf":
+#         {
+#             "key": "rapid",
+#             "name": "Rapid"
+#         },
+#         "rated": true,
+#         "players":
+#         [
+#             {
+#                 "name": "vmileslifestyle",
+#                 "id": "vmileslifestyle",
+#                 "color": "white",
+#                 "rating": 1835
+#             },
+#             {
+#                 "name": "saeedrousta",
+#                 "id": "saeedrousta",
+#                 "color": "black",
+#                 "rating": 1844
+#             }
+#         ],
+#         "pgn": "e4 c5 Nf3 Nc6 Bb5 d6 d4 Nf6 d5 Qa5+ Nc3 Nxe4",
+#         "clock": "10+0"
+#     },
+#     "puzzle":
+#     {
+#         "id": "3z2st",
+#         "rating": 1869,
+#         "plays": 16599,
+#         "solution":
+#         [
+#             "d5c6",
+#             "e4c3",
+#             "c6b7",
+#             "c3b5",
+#             "c1d2"
+#         ],
+#         "themes":
+#         [
+#             "advancedPawn",
+#             "advantage",
+#             "long",
+#             "sacrifice",
+#             "opening",
+#             "discoveredAttack"
+#         ],
+#         "initialPly": 11
+#     }
+# }
+    def test_fetch_puzzle(self):
+        puzzle = _fetch_puzzle("3z2st")
+        self.assertEqual(puzzle._id, "3z2st")
+        self.assertEqual(puzzle.initialPly, 11)
+        self.assertEqual(puzzle.solution, "d5c6 e4c3 c6b7 c3b5 c1d2")
+        self.assertEqual(puzzle.themes, "advancedPawn advantage long sacrifice opening discoveredAttack")
+        self.assertEqual(puzzle.game_pgn, "e4 c5 Nf3 Nc6 Bb5 d6 d4 Nf6 d5 Qa5+ Nc3 Nxe4")
 
 
 if __name__ == "__main__":
