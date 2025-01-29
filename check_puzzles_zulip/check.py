@@ -1,7 +1,10 @@
+import json
 import math
 
 import chess
 import chess.engine
+
+from typing import Tuple
 
 from chess.engine import Score, Limit
 
@@ -9,11 +12,11 @@ from .lichess import get_puzzle
 from .models import PuzzleReport
 from .config import STOCKFISH
 
+
 class Checker(chess.engine.SimpleEngine):
 
     def __init__(self):
         self.popen_uci(STOCKFISH)
-
 
     def check_report(self, report: PuzzleReport) -> None:
         puzzle = get_puzzle(str(report.puzzle_id))
@@ -22,30 +25,34 @@ class Checker(chess.engine.SimpleEngine):
         for move in moves:
             board.push_uci(move)
             # check if ply is the reported one
-            if board.ply() == (int(report.move) * 2 + 1): # type: ignore
-                self.position_has_multiple_solutions(board)
+            if board.ply() == (int(report.move) * 2 + 1):  # type: ignore
+                [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(board)
+                report.has_multiple_solutions = has_multi_sol
+                report.local_evaluation = eval_dump  # type: ignore
+                report.save()
+                return
 
-
-    def position_has_multiple_solutions(self, board: chess.Board) -> bool:
+    # return HasMultipleSolutions if the position has multiple solutions
+    def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
         infos = self.analyse(board, multipv=5, limit=Limit(depth=50, nodes=25_000_000))
         # sort by score descending
-        infos.sort(key=lambda info: info["score"], reverse=True) # type: ignore
+        infos.sort(key=lambda info: info["score"], reverse=True)  # type: ignore
         # chechking both scores from white should be enough to know if the position has multiple solutions
         # even if the puzzle is from black perspective
-        bestEval, secondBestEval = _get_white_score(infos[0]), _get_white_score(infos[1])
-        assert bestEval is not None and secondBestEval is not None, "bestEval and secondBestEval should not be None"
-        return _similar_eval(bestEval, secondBestEval)
-
-        # (ev.depth > 50 || ev.nodes > 25_000_000) &&
-        # bestEval &&
-        # secondBestEval &&
-        # winningChances.areSimilarEvals(ctrl.pov, bestEval, secondBestEval)
+        bestEval, secondBestEval = _get_white_score(infos[0]), _get_white_score(
+            infos[1]
+        )
+        assert (
+            bestEval is not None and secondBestEval is not None
+        ), "bestEval and secondBestEval should not be None"
+        return _similar_eval(bestEval, secondBestEval), json.dumps(infos)
 
 
 def _get_white_score(info: chess.engine.InfoDict) -> Score | None:
-   pov = info.get("score")
-   if pov is not None:
+    pov = info.get("score")
+    if pov is not None:
         return pov.white()
+
 
 # from lichess-puzzler / utils.py
 def _win_chances(score: Score) -> float:
@@ -57,7 +64,7 @@ def _win_chances(score: Score) -> float:
         return 1 if mate > 0 else -1
 
     cp = score.score()
-    MULTIPLIER = -0.00368208 # https://github.com/lichess-org/lila/pull/11148
+    MULTIPLIER = -0.00368208  # https://github.com/lichess-org/lila/pull/11148
     return 2 / (1 + math.exp(MULTIPLIER * cp)) - 1 if cp is not None else 0
 
 
@@ -69,6 +76,7 @@ def _win_diff(score1: Score, score2: Score) -> float:
 def _similar_eval(score1: Score, score2: Score) -> bool:
     win_diff = _win_diff(score1, score2)
     return win_diff < 0.14
+
 
 #         export const povDiff = (color: Color, e1: EvalScore, e2: EvalScore): number =>
 #   (povChances(color, e1) - povChances(color, e2)) / 2;

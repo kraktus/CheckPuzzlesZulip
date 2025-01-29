@@ -67,12 +67,14 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
         doc_string += f"{name_cmd}: {func.__doc__}\n\n"
     return doc_string
 
+
 def fetch_reports() -> None:
 
     client = ZulipClient()
     reports = client.get_puzzle_reports()
     with db.atomic():
         PuzzleReport.bulk_create(reports)
+
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess

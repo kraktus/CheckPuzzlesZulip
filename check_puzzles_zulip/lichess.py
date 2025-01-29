@@ -18,12 +18,13 @@ from .models import Puzzle
 
 
 def get_puzzle(puzzle_id: str) -> Puzzle:
-    puzzle = Puzzle.objects.get_or_none(Puzzle._id == puzzle_id) # type: ignore
+    puzzle = Puzzle.objects.get_or_none(Puzzle._id == puzzle_id)  # type: ignore
     if puzzle is not None:
         return puzzle
     puzzle = _fetch_puzzle(puzzle_id)
     puzzle.save()
     return puzzle
+
 
 def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     """Fetch a puzzle from lichess"""

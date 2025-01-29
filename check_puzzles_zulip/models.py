@@ -6,6 +6,7 @@ from peewee import (
     IntegerField,
     TextField,
     BooleanField,
+    BitField,
     AutoField,
     SqliteDatabase,
 )
@@ -19,6 +20,7 @@ class BaseModel(Model):
     class Meta:
         database = db
 
+
 class PuzzleReport(Model):
     reporter = CharField()
     puzzle_id = FixedCharField(
@@ -31,10 +33,12 @@ class PuzzleReport(Model):
     move = IntegerField()  # move, not plies, starting from 1
     # for future compatibility and debugging
     details = TextField()
-    issues = TextField()
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
     local_evaluation = TextField()
+
+    issues = BitField()
+    has_multiple_solutions = issues.flag(1)
 
     class Meta:
         db = db
