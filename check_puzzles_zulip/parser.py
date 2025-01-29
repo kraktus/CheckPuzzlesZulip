@@ -5,9 +5,9 @@ from .models import PuzzleReport
 
 log = logging.getLogger(__file__)
 
-V5_ONWARD_PATTERN = re.compile(r"(\w+) reported (\w{5}) because \(v(\d+),?(.*)\) after move (\d+)\.(.*)")
+V5_ONWARD_PATTERN = re.compile(r".*/lichess.org/@/(\w+).* reported \[(\w{5})\].* because \(v(\d+),?(.*)\) after move (\d+)\.(.*)")
 
-# xxx reported wfHlQ because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484
+# [xxx](https://lichess.org/@/xxx?mod&notes) reported [wfHlQ](https://lichess.org/training/wfHlQ) because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484
 def parse_report_v5_onward(report_text: str, zulip_message_id: int) -> PuzzleReport | None:
     match = V5_ONWARD_PATTERN.search(report_text)
     if match:

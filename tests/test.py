@@ -11,7 +11,7 @@ class Test(unittest.TestCase):
         self.maxDiff = None
 
     def test_parse_v5_onward_on_v6(self):
-        txt = "xxx reported wfHlQ because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484"
+        txt = "[xxx](https://lichess.org/@/xxx?mod&notes) reported [wfHlQ](https://lichess.org/training/wfHlQ) because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484"
         zulip_message_id = 1
         expected = PuzzleReport(
             reporter="xxx",
@@ -27,7 +27,7 @@ class Test(unittest.TestCase):
         self.assertEqual(parse_report_v5_onward(txt, zulip_message_id), expected)
 
     def test_parse_v5_onward_on_v5(self):
-        txt = "yyy reported jTKok because (v5) after move 36. Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828"
+        txt = "[yyy](https://lichess.org/@/yyy?mod&notes) reported [jTKok](https://lichess.org/training/jTKok) because (v5) after move 36. Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828"
         zulip_message_id = 1
         expected = PuzzleReport(
             reporter="yyy",
