@@ -18,9 +18,10 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Union, Tuple
 
-from .models import setup_db, PuzzleReportDb
+from typing import Optional, List, Union, Tuple, Dict, Callable, Any
+
+from .models import db, setup_db, PuzzleReportDb
 
 
 #############
@@ -65,15 +66,6 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
         doc_string += f"{name_cmd}: {func.__doc__}\n\n"
     return doc_string
 
-
-# Cannot be defined before due to functions
-commands = {
-    "fetch": fetch_reports,
-    "check": "todo",
-    "exporr": "todo",
-}
-
-
 def fetch_reports() -> None:
     from .zulip import ZulipClient
 
@@ -81,7 +73,6 @@ def fetch_reports() -> None:
     reportDbs = [x.to_model() for x in client.get_puzzle_reports()]
     with db.atomic():
         PuzzleReportDb.bulk_create(reportDbs)
-
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
@@ -104,8 +95,15 @@ def main() -> None:
         help="Simple commands that need no arguments",
         formatter_class=RawTextHelpFormatter,
     )
+
+    commands = {
+        "fetch": fetch_reports,
+        "check": "todo",
+        "exporr": "todo",
+    }
+
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(func=argparse_run)
+    run_parser.set_defaults(func=lambda args: commands[args.command]())
     args = parser.parse_args()
     handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
     log.debug(f"args: {args}")

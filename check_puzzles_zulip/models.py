@@ -46,7 +46,7 @@ class PuzzleReport:
         )
 
 
-class PuzzleReportDb(BaseModel):
+class PuzzleReportDb(Model):
     reporter = CharField()
     puzzle_id = FixedCharField(
         5
@@ -64,6 +64,7 @@ class PuzzleReportDb(BaseModel):
     local_evaluation = TextField()
 
     class Meta:
+        db = db
         primary_key = CompositeKey("puzzle_id", "move")
 
 
@@ -130,4 +131,4 @@ class Puzzle(BaseModel):
 
 
 def setup_db():
-    db.create_tables([PuzzleReport, Puzzle])
+    db.create_tables([PuzzleReportDb, Puzzle])
