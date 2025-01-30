@@ -6,7 +6,7 @@ import datetime
 import chess
 import chess.engine
 
-from typing import Tuple
+from typing import Tuple, List
 
 from chess.engine import Score, Limit
 
@@ -18,9 +18,6 @@ log = setup_logger(__file__)
 
 
 class Checker:
-
-    def __init__(self):
-        self.engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH)
 
     def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = get_puzzle(str(report.puzzle_id))
@@ -50,9 +47,7 @@ class Checker:
 
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
         log.debug(f"Analyzing position {board.fen()}")
-        infos = self.engine.analyse(
-            board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
-        )
+        infos = self.analyse_position(board)
         eval_dump = json.dumps(infos, default=default_converter)
         log.debug(f"eval_dump {infos}")
         # sort by score descending
@@ -65,6 +60,14 @@ class Checker:
             bestEval is not None and secondBestEval is not None
         ), "bestEval and secondBestEval should not be None"
         return _similar_eval_but_mate_in_1(bestEval, secondBestEval), eval_dump
+
+    def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
+        log.debug(f"Analyzing position {board.fen()}")
+        with chess.engine.SimpleEngine.popen_uci(STOCKFISH) as engine:
+            infos = engine.analyse(
+                board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
+            )
+        return eval_dump
 
 
 def default_converter(obj):

@@ -10,4 +10,4 @@ wheels/
 .venv
 zuliprc
 *.log
-*.db
+# *.db

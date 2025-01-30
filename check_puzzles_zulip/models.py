@@ -114,4 +114,6 @@ def setup_db(name: str = "check_puzzles_zulip.db"):
     db.init(name)
     db.connect()
     db.create_tables([PuzzleReport, Puzzle])
+    # import time
+    # time.sleep(15)
     return db

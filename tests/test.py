@@ -274,7 +274,7 @@ class Test(unittest.TestCase):
 
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
-        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock  # type: ignore
+        checker.analyse_position = lambda board: dict_info_mock  # type: ignore
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
@@ -417,7 +417,7 @@ class Test(unittest.TestCase):
 
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
-        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock  # type: ignore
+        checker.analyse_position = lambda board: dict_info_mock  # type: ignore
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertFalse(report2.has_multiple_solutions)

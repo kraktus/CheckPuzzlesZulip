@@ -46,38 +46,50 @@ def fetch_reports(db) -> None:
     client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
     with db.atomic():
-        PuzzleReport.insert_many(reports).on_conflict_ignore().execute()
+        inserted_rows = PuzzleReport.insert_many(reports).on_conflict_ignore().as_rowcount().execute()
+        log.info(f"{inserted_rows} new reports")
 
 
 def check_reports(db) -> None:
     """Check the reports in the database"""
     checker = Checker()
     client = ZulipClient(ZULIPRC)
-    unchecked_reports = PuzzleReport.select(PuzzleReport.local_evaluation == "")
+    unchecked_reports = PuzzleReport.select().where(PuzzleReport.checked == False)
+    print("unchecked_reports", unchecked_reports)
     for unchecked_report in unchecked_reports:
+        log.info(f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}")
         # if a checked version exists with same puzzle id and move, skip
-        if PuzzleReport.get_or_none(
+        if original := PuzzleReport.get_or_none(
             PuzzleReport.puzzle_id == unchecked_report.puzzle_id,
             PuzzleReport.move == unchecked_report.move,
             PuzzleReport.checked == True,
         ):
+            log.debug(f"Found duplicate at {original.zulip_message_id}")
             client.react(unchecked_report.zulip_message_id, ":repeat:")
             unchecked_report.checked = True
             unchecked_report.save()
             continue
 
         checked_report = checker.check_report(unchecked_report)
+        log.debug(f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}")
         if checked_report.has_multiple_solutions:
             client.react(checked_report.zulip_message_id, ":check:")
         if checked_report.has_missing_mate_theme:
             client.react(checked_report.zulip_message_id, ":price_tag:")
+        # no issue, cross
+        if checked_report.issues == 0:
+            client.react(checked_report.zulip_message_id, ":cross_mark:")
         checked_report.save()
+    print("done")
 
 
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
+    # Sublime does not show *.db in sidebars
     db = setup_db("puzzle_reports.db")
+    full_path = os.path.abspath(db.database)
+    log.info(f"Using database {full_path}")
     parser = argparse.ArgumentParser()
     # verbose
     parser.add_argument(
@@ -110,6 +122,7 @@ def main() -> None:
     log.debug(f"args: {args}")
     args.func(args)
     db.close()
+    log.info("Connection closed")
 
 
 ########
