@@ -278,6 +278,7 @@ class Test(unittest.TestCase):
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.checked)
         db.close()
 
     def test_checker_missing_mate_theme(self):
@@ -421,6 +422,7 @@ class Test(unittest.TestCase):
         assert isinstance(report2, PuzzleReport)
         self.assertFalse(report2.has_multiple_solutions)
         self.assertTrue(report2.has_missing_mate_theme)
+        self.assertTrue(report2.checked)
         db.close()
 
 

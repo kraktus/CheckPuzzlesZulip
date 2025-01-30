@@ -55,12 +55,29 @@ def check_reports(db) -> None:
     client = ZulipClient(ZULIPRC)
     unchecked_reports = PuzzleReport.select(PuzzleReport.local_evaluation == "")
     for unchecked_report in unchecked_reports:
+        # if a checked version exists with same puzzle id and move, skip
+        if PuzzleReport.get_or_none(
+            PuzzleReport.puzzle_id == unchecked_report.puzzle_id,
+            PuzzleReport.move == unchecked_report.move,
+            PuzzleReport.checked == True,
+        ):
+            client.react(unchecked_report.zulip_message_id, ":repeat:")
+            unchecked_report.checked = True
+            unchecked_report.save()
+            continue
+
         checked_report = checker.check_report(unchecked_report)
+        if checked_report.has_multiple_solutions:
+            client.react(checked_report.zulip_message_id, ":check:")
+        if checked_report.has_missing_mate_theme:
+            client.react(checked_report.zulip_message_id, ":price_tag:")
+        checked_report.save()
+
 
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
-    db = setup_db()
+    db = setup_db("puzzle_reports.db")
     parser = argparse.ArgumentParser()
     # verbose
     parser.add_argument(
@@ -82,8 +99,8 @@ def main() -> None:
 
     commands = {
         "fetch": fetch_reports,
-        "check": "todo",
-        "exporr": "todo",
+        "check": check_reports,
+        "export": "todo",
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))

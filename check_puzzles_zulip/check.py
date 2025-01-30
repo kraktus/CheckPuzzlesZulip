@@ -22,7 +22,7 @@ class Checker:
     def __init__(self):
         self.engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH)
 
-    def check_report(self, report: PuzzleReport) -> PuzzleReport | None:
+    def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = get_puzzle(str(report.puzzle_id))
         board = chess.Board()
         moves = str(puzzle.game_pgn).split()
@@ -31,6 +31,8 @@ class Checker:
             board.push_san(move)
         for move in str(puzzle.solution).split():
             log.debug(f"Checking move {board.ply()}, {board.fen()}")
+            # report.move says that "after move {report.move}"
+            # while `fullmove_number` consider the current move, hence the disparity
             if (
                 board.fullmove_number == (report.move + 1)
                 and board.turn == puzzle.color_to_win()
@@ -43,6 +45,7 @@ class Checker:
         if board.is_checkmate() and not " mate " in puzzle.themes:
             report.has_missing_mate_theme = True
 
+        report.checked = True # type: ignore
         return report
 
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:

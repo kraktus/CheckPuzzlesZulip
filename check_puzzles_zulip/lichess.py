@@ -19,11 +19,13 @@ def get_puzzle(puzzle_id: str) -> Puzzle:
 def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     """Fetch a puzzle from lichess"""
     url = f"https://lichess.org/api/puzzle/{puzzle_id}"
-    response = requests.get(url).json()
+    resp = requests.get(url)
+    log.debug(f"Fetching puzzle {puzzle_id}, status: {resp.status_code} {resp.text}")
+    json = resp.json()
     return Puzzle(
-        _id=response["puzzle"]["id"],
-        initialPly=response["puzzle"]["initialPly"],
-        solution=" ".join(response["puzzle"]["solution"]),
-        themes=" ".join(response["puzzle"]["themes"]),
-        game_pgn=response["game"]["pgn"],
+        _id=json["puzzle"]["id"],
+        initialPly=json["puzzle"]["initialPly"],
+        solution=" ".join(json["puzzle"]["solution"]),
+        themes=" ".join(json["puzzle"]["themes"]),
+        game_pgn=json["game"]["pgn"],
     )

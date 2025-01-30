@@ -107,7 +107,7 @@ class Puzzle(BaseModel):
     game_pgn = TextField()
 
     def color_to_win(self) -> chess.Color:
-        return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK
+        return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK # type: ignore
 
 
 def setup_db(name: str = "check_puzzles_zulip.db"):

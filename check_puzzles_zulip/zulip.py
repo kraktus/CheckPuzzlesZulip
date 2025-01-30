@@ -56,7 +56,7 @@ class ZulipClient:
         log.debug(f"reports found: {len(reports)}")
         return reports
 
-    def react(self, message_id: int, emoji: Emojis) -> None:
+    def react(self, message_id: Any, emoji: Emojis) -> None:
         request = {
             "message_id": message_id,
             "emoji_name": emoji,
