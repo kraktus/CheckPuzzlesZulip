@@ -31,9 +31,8 @@ class Checker:
             board.push_san(move)
         for move in str(puzzle.solution).split():
             log.debug(f"Checking move {board.ply()}, {board.fen()}")
-            # check if ply is the reported one
             if (
-                board.fullmove_number == report.move
+                board.fullmove_number == (report.move + 1)
                 and board.turn == puzzle.color_to_win()
             ):
                 log.debug(f"Checking move {board.ply()}, {board.fen()}")
@@ -46,7 +45,6 @@ class Checker:
 
         return report
 
-    # return HasMultipleSolutions if the position has multiple solutions
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
         log.debug(f"Analyzing position {board.fen()}")
         infos = self.engine.analyse(
@@ -107,7 +105,6 @@ def _similar_eval(score1: Score, score2: Score) -> bool:
 
 # multiple mates in one are allowed, because the lichess client check them and send success regardless
 def _similar_eval_but_mate_in_1(score1: Score, score2: Score) -> bool:
-    print(f"score1: {score1}, score2: {score2}")
     return _similar_eval(score1, score2) and not (
         score1.mate() == 1 and score2.mate() == 1
     )
