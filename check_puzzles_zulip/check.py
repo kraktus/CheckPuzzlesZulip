@@ -67,7 +67,7 @@ class Checker:
             infos = engine.analyse(
                 board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
             )
-        return eval_dump
+        return infos
 
 
 def default_converter(obj):
