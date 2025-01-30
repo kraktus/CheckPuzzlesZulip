@@ -46,7 +46,12 @@ def fetch_reports(db) -> None:
     client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
     with db.atomic():
-        inserted_rows = PuzzleReport.insert_many(reports).on_conflict_ignore().as_rowcount().execute()
+        inserted_rows = (
+            PuzzleReport.insert_many(reports)
+            .on_conflict_ignore()
+            .as_rowcount()
+            .execute()
+        )
         log.info(f"{inserted_rows} new reports")
 
 
@@ -70,7 +75,9 @@ def check_reports(db) -> None:
             continue
 
         checked_report = checker.check_report(unchecked_report)
-        log.debug(f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}")
+        log.debug(
+            f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}"
+        )
         if checked_report.has_multiple_solutions:
             client.react(checked_report.zulip_message_id, "check")
         if checked_report.has_missing_mate_theme:
@@ -81,13 +88,17 @@ def check_reports(db) -> None:
         checked_report.save()
     log.info("All reports checked")
 
+
 def reset_reports(db) -> None:
     """Reset all reports to unchecked"""
     nb_reports = PuzzleReport.select().where(PuzzleReport.checked == True).count()
-    confirm = input(f"Are you sure you want to reset {nb_reports} reports to unchecked? [y/N] ")
+    confirm = input(
+        f"Are you sure you want to reset {nb_reports} reports to unchecked? [y/N] "
+    )
     if confirm.lower() == "y":
         PuzzleReport.update(checked=False).execute()
         log.info("All reports unchecked")
+
 
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess

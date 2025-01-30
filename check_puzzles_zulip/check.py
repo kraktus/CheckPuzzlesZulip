@@ -31,7 +31,7 @@ class Checker:
             # report.move says that "after move {report.move}"
             # while `fullmove_number` consider the current move, hence the disparity
             if (
-                board.fullmove_number == (report.move + 1)
+                board.fullmove_number == (report.move + 1 if puzzle.color_to_win() == chess.WHITE else report.move)
                 and board.turn == puzzle.color_to_win()
             ):
                 log.debug(f"Checking move {board.ply()}, {board.fen()}")
@@ -42,7 +42,7 @@ class Checker:
         if board.is_checkmate() and not " mate " in puzzle.themes:
             report.has_missing_mate_theme = True
 
-        report.checked = True # type: ignore
+        report.checked = True  # type: ignore
         return report
 
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:

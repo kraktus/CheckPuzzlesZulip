@@ -281,6 +281,29 @@ class Test(unittest.TestCase):
         self.assertTrue(report2.checked)
         db.close()
 
+    def test_checker_multi_solution2(self):
+        # reported NtcHj because (v5) after move 50. Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3
+        db = setup_db(":memory:")
+        report = PuzzleReport(
+            reporter="xxx",
+            puzzle_id="NtcHj",
+            report_version=5,
+            sf_version="",
+            move=50,
+            details="Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3",
+            issues="",
+            local_evaluation="",
+            zulip_message_id=1,
+        )
+        checker = Checker()
+        # mock checker.engine.analyse and return dict_info instead
+        #checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        report2 = checker.check_report(report)
+        assert isinstance(report2, PuzzleReport)
+        self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.checked)
+        db.close()
+
     def test_checker_missing_mate_theme(self):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
         db = setup_db(":memory:")
