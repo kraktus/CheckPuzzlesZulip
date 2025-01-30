@@ -150,6 +150,8 @@ class Test(unittest.TestCase):
         self.assertTrue(_similar_eval(Cp(560), Cp(460)))
         self.assertTrue(_similar_eval(Cp(850), Cp(640)))
         self.assertTrue(_similar_eval(Cp(6510), Cp(600)))
+        # this necessitated to include a threshold for the 2nd mate score
+        # self.assertTrue(_similar_eval(Cp(607), Cp(277)))
 
     # from lila/ui/ceval/tests/winningChances.test.ts
     def test_diff_evals(self):
@@ -357,6 +359,86 @@ class Test(unittest.TestCase):
                 "hashfull": 1000,
                 "tbhits": 0,
                 "time": 31.64,
+            },
+        ]
+        checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        report2 = checker.check_report(report)
+        assert isinstance(report2, PuzzleReport)
+        self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.checked)
+        db.close()
+
+    def test_checker_multi_solution3(self):
+        #   reported 5YpsY because (v5) after move 31. e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51
+        db = setup_db(":memory:")
+        report = PuzzleReport(
+            reporter="xxx",
+            puzzle_id="5YpsY",
+            report_version=5,
+            sf_version="",
+            move=31,
+            details="e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51",
+        )
+        checker = Checker()
+        # mock checker.engine.analyse and return dict_info instead
+        dict_info_mock = [
+            {
+                "string": "NNUE evaluation using nn-37f18f62d772.nnue (6MiB, (22528, 128, 15, 32, 1))",
+                "depth": 33,
+                "seldepth": 67,
+                "multipv": 1,
+                "score": PovScore(Cp(+607), WHITE),
+                "nodes": 25000733,
+                "nps": 834386,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 29.963,
+                "currmove": Move.from_uci("g2g3"),
+                "currmovenumber": 1,
+            },
+            {
+                "depth": 33,
+                "seldepth": 46,
+                "multipv": 2,
+                "score": PovScore(Cp(+277), WHITE),
+                "nodes": 25000733,
+                "nps": 834386,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 29.963,
+            },
+            {
+                "depth": 33,
+                "seldepth": 34,
+                "multipv": 3,
+                "score": PovScore(Cp(0), WHITE),
+                "nodes": 25000733,
+                "nps": 834386,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 29.963,
+            },
+            {
+                "depth": 33,
+                "seldepth": 44,
+                "multipv": 4,
+                "score": PovScore(Cp(0), WHITE),
+                "nodes": 25000733,
+                "nps": 834386,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 29.963,
+            },
+            {
+                "depth": 33,
+                "seldepth": 51,
+                "multipv": 5,
+                "score": PovScore(Cp(-58), WHITE),
+                "nodes": 25000733,
+                "nps": 834386,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 29.963,
             },
         ]
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore

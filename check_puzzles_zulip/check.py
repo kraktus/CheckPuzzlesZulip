@@ -64,7 +64,7 @@ class Checker:
         assert (
             bestEval is not None and secondBestEval is not None
         ), "bestEval and secondBestEval should not be None"
-        return _similar_eval_but_mate_in_1(bestEval, secondBestEval), eval_dump
+        return _multiple_solutions(bestEval, secondBestEval), eval_dump
 
     def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
@@ -115,9 +115,10 @@ def _similar_eval(score1: Score, score2: Score) -> bool:
 
 
 # multiple mates in one are allowed, because the lichess client check them and send success regardless
-def _similar_eval_but_mate_in_1(score1: Score, score2: Score) -> bool:
-    return _similar_eval(score1, score2) and not (
-        score1.mate() == 1 and score2.mate() == 1
+def _multiple_solutions(score1: Score, score2: Score) -> bool:
+    return (score2.score() or 0) >= 200 or (
+        _similar_eval(score1, score2)
+        and not (score1.mate() == 1 and score2.mate() == 1)
     )
 
 

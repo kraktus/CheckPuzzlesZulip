@@ -11,4 +11,4 @@ wheels/
 zuliprc
 zuliprc-prod
 *.log
-# *.db
+*.db

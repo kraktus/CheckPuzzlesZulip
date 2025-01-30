@@ -12,6 +12,7 @@ import logging
 import logging.handlers
 import os
 import sys
+import time
 
 from argparse import RawTextHelpFormatter
 from collections import deque
@@ -89,15 +90,21 @@ def check_reports(db) -> None:
     log.info("All reports checked")
 
 
-def reset_reports(db) -> None:
+def reset_argparse(args) -> None:
     """Reset all reports to unchecked"""
     nb_reports = PuzzleReport.select().where(PuzzleReport.checked == True).count()
-    confirm = input(
-        f"Are you sure you want to reset {nb_reports} reports to unchecked? [y/N] "
-    )
+    confirm = input(f"Are you sure you want to reset {args}? [y/N] ")
     if confirm.lower() == "y":
-        PuzzleReport.update(checked=False).execute()
-        log.info("All reports unchecked")
+        if args.reports_checked:
+            PuzzleReport.update(checked=False).execute()
+            log.info("All reports unchecked")
+        if args.reactions:
+            zu = ZulipClient(ZULIPRC)
+            reports = PuzzleReport.select()
+            for report in reports:
+                for emoji in ["check", "cross_mark", "repeat", "price_tag"]:
+                    zu.unreact(report.zulip_message_id, "repeat")
+                    time.sleep(0.1)
 
 
 def main() -> None:
@@ -128,12 +135,22 @@ def main() -> None:
     commands = {
         "fetch": fetch_reports,
         "check": check_reports,
-        "reset": reset_reports,
         "export": "todo",
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
     run_parser.set_defaults(func=lambda args: commands[args.command](db))
+
+    # reset parser
+    reset_parser = subparser.add_parser(
+        "reset", help="Reset part of the database/state"
+    )
+    # add flag for unchecking all reports
+    reset_parser.add_argument("--reports-checked", action="store_true")
+    # zulip reactions
+    reset_parser.add_argument("--reactions", action="store_true")
+    reset_parser.set_defaults(func=reset_argparse)
+
     args = parser.parse_args()
     # log.handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
     log.debug(f"args: {args}")

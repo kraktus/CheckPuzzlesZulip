@@ -69,3 +69,12 @@ class ZulipClient:
         log.debug(f"Reacting to message {message_id} with {emoji}")
         resp = self.zulip.add_reaction(request)
         log.debug(f"React response: {resp}")
+
+    def unreact(self, message_id: Any, emoji: Emojis) -> None:
+        request = {
+            "message_id": message_id,
+            "emoji_name": emoji,
+        }
+        log.debug(f"Unreacting to message {message_id} with {emoji}")
+        resp = self.zulip.remove_reaction(request)
+        log.debug(f"Unreact response: {resp}")
