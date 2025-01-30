@@ -70,25 +70,16 @@ class ZulipClient:
         resp = self.zulip.add_reaction(request)
         log.debug(f"React response: {resp}")
 
-    def unreact(self, message_id: Any) -> None:
+    def unreact_all(self) -> None:
         # first fetch the messages to get the reactions
-        log.debug(f"Fetching message {message_id}")
-        resp = self.zulip.get_messages(
-            {
-                "num_before": 0,
-                "num_after": 0,
-                "anchor": message_id,
-                "narrow": [
-                    {"operator": "id", "operand": message_id},
-                ],
-            }
-        )
+        log.debug(f"Fetching messages to unreact")
+        resp = resp = self.zulip.get_messages(SEARCH_PARAMETERS)
         log.debug(f"Fetching response: {resp}")
-        (message,) = resp["messages"]
         emojis = []
-        for reaction in message["reactions"]:
-            if reaction["user"]["email"] == self.zulip.email:
-                emojis.append(reaction["emoji_name"])
+        for message in resp["messages"]:
+            for reaction in message["reactions"]:
+                if reaction["user"]["email"] == self.zulip.email:
+                    emojis.append(reaction["emoji_name"])
 
         for emoji in emojis:
             request = {

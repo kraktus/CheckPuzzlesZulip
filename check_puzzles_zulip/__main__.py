@@ -100,10 +100,7 @@ def reset_argparse(args) -> None:
             log.info("All reports unchecked")
         if args.reactions:
             zu = ZulipClient(ZULIPRC)
-            reports = PuzzleReport.select()
-            for report in reports:
-                zu.unreact(report.zulip_message_id)
-                time.sleep(0.1)
+            zu.unreact_all()
 
 
 def main() -> None:
