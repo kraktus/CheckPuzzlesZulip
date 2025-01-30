@@ -191,6 +191,7 @@ dependencies = [
     { name = "chess" },
     { name = "peewee" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "zulip" },
 ]
 
@@ -206,6 +207,7 @@ requires-dist = [
     { name = "chess", specifier = ">=1.11.1" },
     { name = "peewee", specifier = ">=3.17.8" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "zulip", specifier = ">=0.9.0" },
 ]
 

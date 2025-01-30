@@ -43,6 +43,10 @@ def setup_logger(name: str):
 
 log = setup_logger(__file__)
 
+##########
+# Config #
+##########
+
 load_dotenv()
 
 

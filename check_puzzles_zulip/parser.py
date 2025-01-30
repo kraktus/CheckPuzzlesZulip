@@ -26,7 +26,7 @@ def parse_report_v5_onward(
             return None
         # Create a PuzzleReport instance
         return PuzzleReport(
-            reporter=reporter,
+            reporter=reporter.lower(),
             puzzle_id=puzzle_id,
             report_version=report_version,
             sf_version=sf_version.strip(),

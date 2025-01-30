@@ -23,7 +23,7 @@ from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
 from .models import setup_db, PuzzleReport
 from .zulip import ZulipClient
-from .config import setup_logger
+from .config import setup_logger, ZULIPRC
 
 log = setup_logger(__file__)
 
@@ -42,7 +42,7 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
 
 def fetch_reports(db) -> None:
 
-    client = ZulipClient()
+    client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
     with db.atomic():
         PuzzleReport.bulk_create(reports)
