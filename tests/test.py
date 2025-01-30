@@ -1,7 +1,7 @@
 from chess.engine import Score, Cp, Mate, PovScore
 
 from check_puzzles_zulip.parser import parse_report_v5_onward
-from check_puzzles_zulip.models import PuzzleReport
+from check_puzzles_zulip.models import PuzzleReport, PuzzleReportDict
 from check_puzzles_zulip.lichess import _fetch_puzzle
 from check_puzzles_zulip.check import _similar_eval, Checker
 from check_puzzles_zulip.models import setup_db
@@ -19,37 +19,61 @@ class Test(unittest.TestCase):
         txt = '<p><a href="https://lichess.org/@/BOObOO?mod&amp;notes">booboo</a> reported <a href="https://lichess.org/training/12Qi4">12Qi4</a> because (v6, SF 16 · 7MB) after move 59. Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1</p>'
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
-        assert isinstance(puzzle_report, PuzzleReport)
-        self.assertEqual(puzzle_report.reporter, "booboo")
-        self.assertEqual(puzzle_report.puzzle_id, "12Qi4")
-        self.assertEqual(puzzle_report.report_version, 6)
-        self.assertEqual(puzzle_report.sf_version, "SF 16 · 7MB")
-        self.assertEqual(puzzle_report.move, 59)
-        self.assertEqual(
-            puzzle_report.details,
-            "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
-        )
-        self.assertEqual(puzzle_report.issues, "")
-        self.assertEqual(puzzle_report.local_evaluation, "")
-        self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+        assert puzzle_report is not None
+        expected = {
+                "reporter": "booboo",
+                "puzzle_id": "12Qi4",
+                "report_version": 6,
+                "sf_version": "SF 16 · 7MB",
+                "move": 59,
+                "details": "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
+                "zulip_message_id": zulip_message_id,
+                "issues": "",
+                "local_evaluation": "",
+            }
+        # self.assertEqual(puzzle_report.reporter, "booboo")
+        # self.assertEqual(puzzle_report.puzzle_id, "12Qi4")
+        # self.assertEqual(puzzle_report.report_version, 6)
+        # self.assertEqual(puzzle_report.sf_version, "SF 16 · 7MB")
+        # self.assertEqual(puzzle_report.move, 59)
+        # self.assertEqual(
+        #     puzzle_report.details,
+        #     "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
+        # )
+        # self.assertEqual(puzzle_report.issues, "")
+        # self.assertEqual(puzzle_report.local_evaluation, "")
+        # self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+        self.assertEqual(puzzle_report, expected)
 
     def test_parse_v5_onward_on_v5(self):
         txt = '<p><a href="https://lichess.org/@/zzz?mod&amp;notes">zzz</a> reported <a href="https://lichess.org/training/jTKok">jTKok</a> because (v5) after move 36. Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828</p>'
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
-        assert isinstance(puzzle_report, PuzzleReport)
-        self.assertEqual(puzzle_report.reporter, "zzz")
-        self.assertEqual(puzzle_report.puzzle_id, "jTKok")
-        self.assertEqual(puzzle_report.report_version, 5)
-        self.assertEqual(puzzle_report.sf_version, "")
-        self.assertEqual(puzzle_report.move, 36)
-        self.assertEqual(
-            puzzle_report.details,
-            "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
-        )
-        self.assertEqual(puzzle_report.issues, "")
-        self.assertEqual(puzzle_report.local_evaluation, "")
-        self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+        assert puzzle_report is not None
+        expected = {
+                "reporter": "zzz",
+                "puzzle_id": "jTKok",
+                "report_version": 5,
+                "sf_version": "",
+                "move": 36,
+                "details": "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
+                "zulip_message_id": zulip_message_id,
+                "issues": "",
+                "local_evaluation": "",
+            }
+        # self.assertEqual(puzzle_report.reporter, "zzz")
+        # self.assertEqual(puzzle_report.puzzle_id, "jTKok")
+        # self.assertEqual(puzzle_report.report_version, 5)
+        # self.assertEqual(puzzle_report.sf_version, "")
+        # self.assertEqual(puzzle_report.move, 36)
+        # self.assertEqual(
+        #     puzzle_report.details,
+        #     "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
+        # )
+        # self.assertEqual(puzzle_report.issues, "")
+        # self.assertEqual(puzzle_report.local_evaluation, "")
+        # self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+        self.assertEqual(puzzle_report, expected)
 
     # {
     #     "game":

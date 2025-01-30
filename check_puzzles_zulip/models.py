@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from peewee import (
     Model,
     FixedCharField,
@@ -11,7 +13,6 @@ from peewee import (
     SqliteDatabase,
 )
 
-from dataclasses import dataclass
 
 db = SqliteDatabase(None)
 
@@ -21,7 +22,22 @@ class BaseModel(Model):
         database = db
 
 
+# needed to allow to use insert_many in db...
+class PuzzleReportDict(TypedDict):
+    reporter: str
+    puzzle_id: str
+    report_version: int
+    sf_version: str
+    zulip_message_id: int
+    move: int
+    details: str
+    # Those should not be set otherwise than ""
+    local_evaluation: str
+    issues: str
+
+
 class PuzzleReport(BaseModel):
+    zulip_message_id = CharField(primary_key=True)
     reporter = CharField()
     puzzle_id = FixedCharField(
         5
@@ -29,7 +45,6 @@ class PuzzleReport(BaseModel):
     report_version = IntegerField()
     # not present before v5
     sf_version = CharField()
-    zulip_message_id = CharField()
     move = IntegerField()  # move, not plies, starting from 1
     # for future compatibility and debugging
     details = TextField()
@@ -39,9 +54,6 @@ class PuzzleReport(BaseModel):
 
     issues = BitField()
     has_multiple_solutions = issues.flag(1)
-
-    class Meta:  # type: ignore
-        primary_key = CompositeKey("puzzle_id", "move")
 
 
 # taken from the lichess api
