@@ -6,11 +6,11 @@ from .models import PuzzleReport
 log = logging.getLogger(__file__)
 
 V5_ONWARD_PATTERN = re.compile(
-    r".*/lichess.org/@/(\w+).* reported \[(\w{5})\].* because \(v(\d+),?(.*)\) after move (\d+)\.(.*)"
+    r".*/lichess.org/@/(\w+).* reported .*/training/(\w{5}).* because \(v(\d+),?(.*)\) after move (\d+)\.(.*)</p>"
 )
 
 
-# [xxx](https://lichess.org/@/xxx?mod&notes) reported [wfHlQ](https://lichess.org/training/wfHlQ) because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484
+# <p><a href="https://lichess.org/@/BOObOO?mod&amp;notes">booboo</a> reported <a href="https://lichess.org/training/12Qi4">12Qi4</a> because (v6, SF 16 · 7MB) after move 59. Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1</p>
 def parse_report_v5_onward(
     report_text: str, zulip_message_id: int
 ) -> PuzzleReport | None:

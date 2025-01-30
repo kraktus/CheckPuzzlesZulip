@@ -26,6 +26,7 @@ RETRY_STRAT = Retry(
 ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
 
 
+# TODO make it so it chunks by 5000 to be sure it gets all the messages
 SEARCH_PARAMETERS = {
     "anchor": "oldest",
     "num_after": 5000,
@@ -51,40 +52,6 @@ class ZulipClient:
             puzzle_report = parse_report_v5_onward(message["content"], message["id"])
             if puzzle_report is not None:
                 reports.append(puzzle_report)
+        log.debug(f"reports found: {len(reports)}")
         return reports
-
-
-    # def _get_messages(self, params: Dict[str, Any]) -> Dict[str, Any]:
-    #     path = f"{self.config.site}/api/v1/messages"
-    #     res = self.http.get(path, params=params).json()
-    #     log.debug(f"Response to {path}: {res}")
-    #     return res
-
-
-@dataclass(frozen=True)
-class ZulipConfig:
-    
-    # [api]
-    #     email=zzz
-    #     key=yyy
-    #     site=xxx
-    email: str
-    key: str
-    site: str
-
-
-def parse_zuliprc(zuliprc_path: str) -> ZulipConfig:
-    config = configparser.ConfigParser()
-    try:
-        config.read(zuliprc_path)
-        return ZulipConfig(
-            email=config["api"]["email"],
-            key=config["api"]["key"],
-            site=config["api"]["site"],
-        )
-    except Exception as e:
-        log.error(f"Error reading zuliprc file: {e}, file: {zuliprc_path}")
-        raise e
-
-
 

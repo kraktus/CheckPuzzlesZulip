@@ -16,29 +16,29 @@ class Test(unittest.TestCase):
         self.maxDiff = None
 
     def test_parse_v5_onward_on_v6(self):
-        txt = "[xxx](https://lichess.org/@/xxx?mod&notes) reported [wfHlQ](https://lichess.org/training/wfHlQ) because (v6, SF 16 · 7MB) after move 17. f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484"
+        txt = '<p><a href="https://lichess.org/@/BOObOO?mod&amp;notes">booboo</a> reported <a href="https://lichess.org/training/12Qi4">12Qi4</a> because (v6, SF 16 · 7MB) after move 59. Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1</p>'
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert isinstance(puzzle_report, PuzzleReport)
-        self.assertEqual(puzzle_report.reporter, "xxx")
-        self.assertEqual(puzzle_report.puzzle_id, "wfHlQ")
+        self.assertEqual(puzzle_report.reporter, "booboo")
+        self.assertEqual(puzzle_report.puzzle_id, "12Qi4")
         self.assertEqual(puzzle_report.report_version, 6)
         self.assertEqual(puzzle_report.sf_version, "SF 16 · 7MB")
-        self.assertEqual(puzzle_report.move, 17)
+        self.assertEqual(puzzle_report.move, 59)
         self.assertEqual(
             puzzle_report.details,
-            "f6, at depth 21, multiple solutions, pvs g5g3: 229, g5h6: 81, g5h4: -10, f4e6: -396, f4g6: -484",
+            "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
         )
         self.assertEqual(puzzle_report.issues, "")
         self.assertEqual(puzzle_report.local_evaluation, "")
         self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
 
     def test_parse_v5_onward_on_v5(self):
-        txt = "[yyy](https://lichess.org/@/yyy?mod&notes) reported [jTKok](https://lichess.org/training/jTKok) because (v5) after move 36. Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828"
+        txt = '<p><a href="https://lichess.org/@/zzz?mod&amp;notes">zzz</a> reported <a href="https://lichess.org/training/jTKok">jTKok</a> because (v5) after move 36. Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828</p>'
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert isinstance(puzzle_report, PuzzleReport)
-        self.assertEqual(puzzle_report.reporter, "yyy")
+        self.assertEqual(puzzle_report.reporter, "zzz")
         self.assertEqual(puzzle_report.puzzle_id, "jTKok")
         self.assertEqual(puzzle_report.report_version, 5)
         self.assertEqual(puzzle_report.sf_version, "")
