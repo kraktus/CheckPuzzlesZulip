@@ -11,7 +11,7 @@ import sys
 # Constants #
 #############
 
-LOG_PATH = f"{__name__}.log"
+LOG_PATH = f"{__package__}.log"
 
 
 ########
