@@ -31,7 +31,12 @@ class Checker:
             # report.move says that "after move {report.move}"
             # while `fullmove_number` consider the current move, hence the disparity
             if (
-                board.fullmove_number == (report.move + 1 if puzzle.color_to_win() == chess.WHITE else report.move)
+                board.fullmove_number
+                == (
+                    report.move + 1
+                    if puzzle.color_to_win() == chess.WHITE
+                    else report.move
+                )
                 and board.turn == puzzle.color_to_win()
             ):
                 log.debug(f"Checking move {board.ply()}, {board.fen()}")

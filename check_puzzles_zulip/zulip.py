@@ -69,4 +69,3 @@ class ZulipClient:
         log.debug(f"Reacting to message {message_id} with {emoji}")
         resp = self.zulip.add_reaction(request)
         log.debug(f"React response: {resp}")
-

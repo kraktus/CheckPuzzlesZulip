@@ -297,7 +297,69 @@ class Test(unittest.TestCase):
         )
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
-        #checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        dict_info_mock = [
+            {
+                "string": "NNUE evaluation using nn-37f18f62d772.nnue (6MiB, (22528, 128, 15, 32, 1))",
+                "depth": 32,
+                "seldepth": 49,
+                "multipv": 1,
+                "score": PovScore(Cp(+546), BLACK),
+                "nodes": 25000086,
+                "nps": 790141,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 31.64,
+                "currmove": Move.from_uci("c2e2"),
+                "currmovenumber": 4,
+            },
+            {
+                "depth": 32,
+                "seldepth": 42,
+                "multipv": 2,
+                "score": PovScore(Cp(+484), BLACK),
+                "nodes": 25000086,
+                "nps": 790141,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 31.64,
+            },
+            {
+                "depth": 32,
+                "seldepth": 44,
+                "multipv": 3,
+                "score": PovScore(Cp(+17), BLACK),
+                "nodes": 25000086,
+                "nps": 790141,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 31.64,
+            },
+            {
+                "depth": 32,
+                "seldepth": 47,
+                "multipv": 4,
+                "score": PovScore(Cp(+8), BLACK),
+                "nodes": 25000086,
+                "nps": 790141,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 31.64,
+                "pv": [Move.from_uci("c2e2"), Move.from_uci("e1g1")],
+                "upperbound": True,
+            },
+            {
+                "depth": 31,
+                "seldepth": 51,
+                "multipv": 5,
+                "score": PovScore(Cp(0), BLACK),
+                "nodes": 25000086,
+                "nps": 790141,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 31.64,
+            },
+        ]
+        checker.analyse_position = lambda board: dict_info_mock  # type: ignore
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
