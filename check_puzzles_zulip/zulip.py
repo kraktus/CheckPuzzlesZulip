@@ -32,12 +32,12 @@ SEARCH_PARAMETERS = {
     "num_after": 5000,
     "narrow": [
         {"operator": "channel", "operand": ZULIP_CHANNEL},
-        # {"operator": "topic", "operand": ZULIP_TOPIC},
+        {"operator": "topic", "operand": ZULIP_TOPIC},
         # {"operator": "sender", "operand": ZULIP_REPORTER},
     ],
 }
 
-Emojis = Literal[":check:", ":cross_mark:", ":repeat:", ":price_tag:"]
+Emojis = Literal["check", "cross_mark", "repeat", "price_tag"]
 
 
 class ZulipClient:
@@ -46,7 +46,9 @@ class ZulipClient:
         self.zulip = zulip.Client(config_file=zuliprc_path)
 
     def get_puzzle_reports(self) -> List[PuzzleReport]:
-        messages = self.zulip.get_messages(SEARCH_PARAMETERS).get("messages", [])
+        resp = self.zulip.get_messages(SEARCH_PARAMETERS)
+        log.debug(f"get_messages response: {resp}")
+        messages = resp.get("messages", [])
         log.debug(f"Messages fetched: {messages}")
         reports = []
         for message in messages:
