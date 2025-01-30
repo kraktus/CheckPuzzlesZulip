@@ -102,9 +102,8 @@ def reset_argparse(args) -> None:
             zu = ZulipClient(ZULIPRC)
             reports = PuzzleReport.select()
             for report in reports:
-                for emoji in ["check", "cross_mark", "repeat", "price_tag"]:
-                    zu.unreact(report.zulip_message_id, "repeat")
-                    time.sleep(0.1)
+                zu.unreact(report.zulip_message_id)
+                time.sleep(0.1)
 
 
 def main() -> None:
