@@ -26,20 +26,25 @@ class Checker:
         puzzle = get_puzzle(str(report.puzzle_id))
         board = chess.Board()
         moves = str(puzzle.game_pgn).split()
+        log.info(f"Checking puzzle {puzzle._id}")
         for move in moves:
             board.push_san(move)
-        print("sol ", str(puzzle.solution).split())
         for move in str(puzzle.solution).split():
             log.debug(f"Checking move {board.ply()}, {board.fen()}")
             # check if ply is the reported one
-            if board.ply() == (int(report.move) * 2):  # type: ignore
+            if (
+                board.fullmove_number == report.move
+                and board.turn == puzzle.color_to_win()
+            ):
                 log.debug(f"Checking move {board.ply()}, {board.fen()}")
                 [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(board)
                 report.has_multiple_solutions = has_multi_sol
                 report.local_evaluation = eval_dump  # type: ignore
-                log.debug(f"Reported: {eval_dump}")
-                return report
             board.push_uci(move)
+        if board.is_checkmate() and not " mate " in puzzle.themes:
+            report.has_missing_mate_theme = True
+
+        return report
 
     # return HasMultipleSolutions if the position has multiple solutions
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
@@ -48,19 +53,17 @@ class Checker:
             board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
         )
         eval_dump = json.dumps(infos, default=default_converter)
-        log.debug("eval_dump", eval_dump)
+        log.debug(f"eval_dump {infos}")
         # sort by score descending
-        color = board.turn
-        infos.sort(key=lambda info: info["score"].pov(color), reverse=True)  # type: ignore
-        # chechking both scores from white should be enough to know if the position has multiple solutions
-        # even if the puzzle is from black perspective
-        bestEval, secondBestEval = _get_white_score(infos[0]), _get_white_score(
-            infos[1]
+        turn = board.turn
+        infos.sort(key=lambda info: info["score"].pov(turn), reverse=True)  # type: ignore
+        bestEval, secondBestEval = _get_score(infos[0], turn), _get_score(
+            infos[1], turn
         )
         assert (
             bestEval is not None and secondBestEval is not None
         ), "bestEval and secondBestEval should not be None"
-        return _similar_eval(bestEval, secondBestEval), eval_dump
+        return _similar_eval_but_mate_in_1(bestEval, secondBestEval), eval_dump
 
 
 def default_converter(obj):
@@ -72,10 +75,10 @@ def default_converter(obj):
         return str(obj)  # Fallback to string representation
 
 
-def _get_white_score(info: chess.engine.InfoDict) -> Score | None:
-    pov = info.get("score")
-    if pov is not None:
-        return pov.white()
+def _get_score(info: chess.engine.InfoDict, turn: chess.Color) -> Score | None:
+    score = info.get("score")
+    if score is not None:
+        return score.pov(turn)
 
 
 # from lichess-puzzler / utils.py
@@ -100,6 +103,14 @@ def _win_diff(score1: Score, score2: Score) -> float:
 def _similar_eval(score1: Score, score2: Score) -> bool:
     win_diff = _win_diff(score1, score2)
     return win_diff < 0.14
+
+
+# multiple mates in one are allowed, because the lichess client check them and send success regardless
+def _similar_eval_but_mate_in_1(score1: Score, score2: Score) -> bool:
+    print(f"score1: {score1}, score2: {score2}")
+    return _similar_eval(score1, score2) and not (
+        score1.mate() == 1 and score2.mate() == 1
+    )
 
 
 #         export const povDiff = (color: Color, e1: EvalScore, e2: EvalScore): number =>

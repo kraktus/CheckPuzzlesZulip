@@ -1,3 +1,5 @@
+import chess
+
 from typing import TypedDict
 
 from peewee import (
@@ -48,12 +50,18 @@ class PuzzleReport(BaseModel):
     move = IntegerField()  # move, not plies, starting from 1
     # for future compatibility and debugging
     details = TextField()
+
+    # if the report has been checked
+    # not necessarily equal to `local_evaluation == ""`
+    # in case the report is a duplicate
+    checked = BooleanField(default=False)
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
     local_evaluation = TextField()
 
     issues = BitField()
     has_multiple_solutions = issues.flag(1)
+    has_missing_mate_theme = issues.flag(2)
 
 
 # taken from the lichess api
@@ -91,13 +99,15 @@ class PuzzleReport(BaseModel):
 # }
 class Puzzle(BaseModel):
     _id = FixedCharField(5, primary_key=True)
-    fen = CharField()
     initialPly = IntegerField()
     solution = CharField()
     # themes, separated by spaces
     themes = TextField()
     # moves, separated by spaces
     game_pgn = TextField()
+
+    def color_to_win(self) -> chess.Color:
+        return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK
 
 
 def setup_db(name: str = "check_puzzles_zulip.db"):

@@ -3,10 +3,10 @@ import configparser
 import requests
 import zulip
 
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Literal
 
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry # type: ignore
+from requests.packages.urllib3.util.retry import Retry  # type: ignore
 
 from .models import PuzzleReport
 from .parser import parse_report_v5_onward
@@ -21,7 +21,7 @@ RETRY_STRAT = Retry(
     total=5,
     backoff_factor=1,
     status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET"]
+    allowed_methods=["GET"],
 )
 ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
 
@@ -37,12 +37,13 @@ SEARCH_PARAMETERS = {
     ],
 }
 
+Emojis = Literal[":check:", ":cross_mark:", ":repeat:", ":price_tag:"]
+
 
 class ZulipClient:
 
     def __init__(self, zuliprc_path: str):
         self.zulip = zulip.Client(config_file=zuliprc_path)
-
 
     def get_puzzle_reports(self) -> List[PuzzleReport]:
         messages = self.zulip.get_messages(SEARCH_PARAMETERS).get("messages", [])
@@ -55,3 +56,9 @@ class ZulipClient:
         log.debug(f"reports found: {len(reports)}")
         return reports
 
+    def react(self, message_id: int, emoji: Emojis) -> None:
+        request = {
+            "message_id": message_id,
+            "emoji_name": emoji,
+        }
+        self.zulip.add_reaction(request)

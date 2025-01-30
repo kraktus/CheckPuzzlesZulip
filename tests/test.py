@@ -1,3 +1,4 @@
+from chess import WHITE, BLACK, Move
 from chess.engine import Score, Cp, Mate, PovScore
 
 from check_puzzles_zulip.parser import parse_report_v5_onward
@@ -21,28 +22,16 @@ class Test(unittest.TestCase):
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
         expected = {
-                "reporter": "booboo",
-                "puzzle_id": "12Qi4",
-                "report_version": 6,
-                "sf_version": "SF 16 · 7MB",
-                "move": 59,
-                "details": "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
-                "zulip_message_id": zulip_message_id,
-                "issues": "",
-                "local_evaluation": "",
-            }
-        # self.assertEqual(puzzle_report.reporter, "booboo")
-        # self.assertEqual(puzzle_report.puzzle_id, "12Qi4")
-        # self.assertEqual(puzzle_report.report_version, 6)
-        # self.assertEqual(puzzle_report.sf_version, "SF 16 · 7MB")
-        # self.assertEqual(puzzle_report.move, 59)
-        # self.assertEqual(
-        #     puzzle_report.details,
-        #     "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
-        # )
-        # self.assertEqual(puzzle_report.issues, "")
-        # self.assertEqual(puzzle_report.local_evaluation, "")
-        # self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+            "reporter": "booboo",
+            "puzzle_id": "12Qi4",
+            "report_version": 6,
+            "sf_version": "SF 16 · 7MB",
+            "move": 59,
+            "details": "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
+            "zulip_message_id": zulip_message_id,
+            "issues": "",
+            "local_evaluation": "",
+        }
         self.assertEqual(puzzle_report, expected)
 
     def test_parse_v5_onward_on_v5(self):
@@ -51,28 +40,16 @@ class Test(unittest.TestCase):
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
         expected = {
-                "reporter": "zzz",
-                "puzzle_id": "jTKok",
-                "report_version": 5,
-                "sf_version": "",
-                "move": 36,
-                "details": "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
-                "zulip_message_id": zulip_message_id,
-                "issues": "",
-                "local_evaluation": "",
-            }
-        # self.assertEqual(puzzle_report.reporter, "zzz")
-        # self.assertEqual(puzzle_report.puzzle_id, "jTKok")
-        # self.assertEqual(puzzle_report.report_version, 5)
-        # self.assertEqual(puzzle_report.sf_version, "")
-        # self.assertEqual(puzzle_report.move, 36)
-        # self.assertEqual(
-        #     puzzle_report.details,
-        #     "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
-        # )
-        # self.assertEqual(puzzle_report.issues, "")
-        # self.assertEqual(puzzle_report.local_evaluation, "")
-        # self.assertEqual(puzzle_report.zulip_message_id, zulip_message_id)
+            "reporter": "zzz",
+            "puzzle_id": "jTKok",
+            "report_version": 5,
+            "sf_version": "",
+            "move": 36,
+            "details": "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
+            "zulip_message_id": zulip_message_id,
+            "issues": "",
+            "local_evaluation": "",
+        }
         self.assertEqual(puzzle_report, expected)
 
     # {
@@ -213,7 +190,7 @@ class Test(unittest.TestCase):
 
         self.assertFalse(_similar_eval(Mate(16), Cp(420)))
 
-    def test_cheker(self):
+    def test_checker_multi_solution(self):
         # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
         db = setup_db(":memory:")
         report = PuzzleReport(
@@ -297,16 +274,156 @@ class Test(unittest.TestCase):
 
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
-        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock # type: ignore
+        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock  # type: ignore
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
-        # self.assertEqual(
-        #     report2.local_evaluation,
-        #     "a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
-        # )
+        db.close()
+
+    def test_checker_missing_mate_theme(self):
+        # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
+        db = setup_db(":memory:")
+        report = PuzzleReport(
+            reporter="fff",
+            puzzle_id="2F0QF",
+            report_version=6,
+            sf_version="SF 16 · 7MB",
+            move=38,
+            details="Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1",
+            issues="",
+            local_evaluation="",
+            zulip_message_id=1,
+        )
+
+        dict_info_mock = [
+            {
+                "string": "NNUE evaluation using nn-37f18f62d772.nnue (6MiB, (22528, 128, 15, 32, 1))",
+                "depth": 32,
+                "seldepth": 2,
+                "multipv": 1,
+                "score": PovScore(Mate(+1), BLACK),
+                "nodes": 25000112,
+                "nps": 825249,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 30.294,
+                "pv": [Move.from_uci("d4f3")],
+                "currmove": Move.from_uci("d4e6"),
+                "currmovenumber": 3,
+            },
+            {
+                "depth": 32,
+                "seldepth": 2,
+                "multipv": 2,
+                "score": PovScore(Mate(+1), BLACK),
+                "nodes": 25000112,
+                "nps": 825249,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 30.294,
+                "pv": [Move.from_uci("f1h1")],
+            },
+            {
+                "depth": 31,
+                "seldepth": 59,
+                "multipv": 3,
+                "score": PovScore(Cp(-516), BLACK),
+                "nodes": 25000112,
+                "nps": 825249,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 30.294,
+                "pv": [
+                    Move.from_uci("d4e6"),
+                    Move.from_uci("g8e6"),
+                    Move.from_uci("g6h7"),
+                    Move.from_uci("e6d5"),
+                    Move.from_uci("f1f2"),
+                    Move.from_uci("h4h3"),
+                    Move.from_uci("f2f1"),
+                    Move.from_uci("d5g2"),
+                    Move.from_uci("f1d1"),
+                    Move.from_uci("h3h2"),
+                    Move.from_uci("d1h5"),
+                    Move.from_uci("h2g1"),
+                    Move.from_uci("b7b5"),
+                    Move.from_uci("g2f1"),
+                    Move.from_uci("h5g4"),
+                    Move.from_uci("g1g2"),
+                    Move.from_uci("g4e4"),
+                    Move.from_uci("f1f3"),
+                    Move.from_uci("e4e5"),
+                    Move.from_uci("c7c2"),
+                    Move.from_uci("a7a5"),
+                    Move.from_uci("c2f2"),
+                    Move.from_uci("h7g6"),
+                    Move.from_uci("f2e2"),
+                    Move.from_uci("e5c5"),
+                    Move.from_uci("e2e6"),
+                    Move.from_uci("g6h7"),
+                    Move.from_uci("e6e3"),
+                    Move.from_uci("c5c2"),
+                    Move.from_uci("e3e2"),
+                ],
+            },
+            {
+                "depth": 31,
+                "seldepth": 13,
+                "multipv": 4,
+                "score": PovScore(Mate(-6), BLACK),
+                "nodes": 25000112,
+                "nps": 825249,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 30.294,
+                "pv": [
+                    Move.from_uci("f1f4"),
+                    Move.from_uci("g3f4"),
+                    Move.from_uci("d4f3"),
+                    Move.from_uci("h4g3"),
+                    Move.from_uci("f3g5"),
+                    Move.from_uci("g8g7"),
+                    Move.from_uci("g6h5"),
+                    Move.from_uci("f4g5"),
+                    Move.from_uci("f5f4"),
+                    Move.from_uci("g3f4"),
+                    Move.from_uci("h6g5"),
+                    Move.from_uci("g7g5"),
+                ],
+            },
+            {
+                "depth": 31,
+                "seldepth": 9,
+                "multipv": 5,
+                "score": PovScore(Mate(-4), BLACK),
+                "nodes": 25000112,
+                "nps": 825249,
+                "hashfull": 1000,
+                "tbhits": 0,
+                "time": 30.294,
+                "pv": [
+                    Move.from_uci("f1h3"),
+                    Move.from_uci("h4h3"),
+                    Move.from_uci("g6f6"),
+                    Move.from_uci("g8g7"),
+                    Move.from_uci("f6e6"),
+                    Move.from_uci("g7e7"),
+                    Move.from_uci("e6d5"),
+                    Move.from_uci("c7c5"),
+                ],
+            },
+        ]
+
+        checker = Checker()
+        # mock checker.engine.analyse and return dict_info instead
+        checker.engine.analyse = lambda board, multipv, limit: dict_info_mock  # type: ignore
+        report2 = checker.check_report(report)
+        assert isinstance(report2, PuzzleReport)
+        self.assertFalse(report2.has_multiple_solutions)
+        self.assertTrue(report2.has_missing_mate_theme)
         db.close()
 
 
 if __name__ == "__main__":
+    print("#" * 80)
     unittest.main()

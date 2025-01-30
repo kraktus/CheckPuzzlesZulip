@@ -13,8 +13,10 @@ A small zulip bot that checks if the puzzles reported by WASM SF from lichess cl
 
 check `.env.base`, create `.env` with the same variables, and fill them with the correct values.
 
-`uv run -m check_puzzles_zulip run <command>`
+run: `uv run -m check_puzzles_zulip run <command>`
 
-## How to test
+test `uv run -m unittest tests/test.py`
 
-`uv run -m unittest tests/test.py`
+format `uv run black .`
+
+typecheck: `uv run pyright .`

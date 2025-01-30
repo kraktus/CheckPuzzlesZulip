@@ -21,6 +21,7 @@ from pathlib import Path
 
 from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
+from .check import Checker
 from .models import setup_db, PuzzleReport
 from .zulip import ZulipClient
 from .config import setup_logger, ZULIPRC
@@ -45,7 +46,16 @@ def fetch_reports(db) -> None:
     client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
     with db.atomic():
-        PuzzleReport.bulk_create(reports)
+        PuzzleReport.insert_many(reports).on_conflict_ignore().execute()
+
+
+def check_reports(db) -> None:
+    """Check the reports in the database"""
+    checker = Checker()
+    client = ZulipClient(ZULIPRC)
+    unchecked_reports = PuzzleReport.select(PuzzleReport.local_evaluation == "")
+    for unchecked_report in unchecked_reports:
+        checked_report = checker.check_report(unchecked_report)
 
 
 def main() -> None:

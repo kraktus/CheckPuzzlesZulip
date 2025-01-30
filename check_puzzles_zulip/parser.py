@@ -24,7 +24,7 @@ def parse_report_v5_onward(
                 f"successfully parsed a report with `parse_report_v5_onward` a report of version {report_version} text: {report_text}"
             )
             return None
-        # Create a PuzzleReportDict 
+        # Create a PuzzleReportDict
         return {
             "reporter": reporter.lower(),
             "puzzle_id": puzzle_id,
