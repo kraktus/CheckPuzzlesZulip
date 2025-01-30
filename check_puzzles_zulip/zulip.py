@@ -59,6 +59,8 @@ class ZulipClient:
         log.debug(f"reports found: {len(reports)}")
         return reports
 
+    #  {'result': 'success', 'msg': '', 'ignored_parameters_unsupported': ['message_id']}
+    # but seems to be working fine
     def react(self, message_id: Any, emoji: Emojis) -> None:
         request = {
             "message_id": message_id,
