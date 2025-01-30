@@ -33,7 +33,7 @@ SEARCH_PARAMETERS = {
     "narrow": [
         {"operator": "channel", "operand": ZULIP_CHANNEL},
         {"operator": "topic", "operand": ZULIP_TOPIC},
-        # {"operator": "sender", "operand": ZULIP_REPORTER},
+        {"operator": "sender", "operand": ZULIP_REPORTER},
     ],
 }
 
