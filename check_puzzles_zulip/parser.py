@@ -2,8 +2,9 @@ import logging
 import re
 
 from .models import PuzzleReportDict
+from .config import setup_logger
 
-log = logging.getLogger(__file__)
+log = setup_logger(__file__)
 
 V5_ONWARD_PATTERN = re.compile(
     r".*/lichess.org/@/(\w+).* reported .*/training/(\w{5}).* because \(v(\d+),?(.*)\) after move (\d+)\.(.*)</p>"
@@ -21,7 +22,7 @@ def parse_report_v5_onward(
         report_version = int(report_version)
         if report_version < 5:
             log.error(
-                f"successfully parsed a report with `parse_report_v5_onward` a report of version {report_version} text: {report_text}"
+                f"ignored a report of version {report_version} zulip id: {zulip_message_id}"
             )
             return None
         # Create a PuzzleReportDict

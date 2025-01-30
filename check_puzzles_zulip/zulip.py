@@ -29,6 +29,7 @@ ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
 # TODO make it so it chunks by 5000 to be sure it gets all the messages
 SEARCH_PARAMETERS = {
     "anchor": "oldest",
+    "num_before": 0,
     "num_after": 5000,
     "narrow": [
         {"operator": "channel", "operand": ZULIP_CHANNEL},
