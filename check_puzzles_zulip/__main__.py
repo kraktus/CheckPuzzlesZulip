@@ -57,53 +57,36 @@ def fetch_reports(db) -> None:
 
 
 def check_reports(db, workers: Optional[int] = None) -> None:
-    """Check the reports in the database using multiple processes, processing results as they arrive"""
+    """Check the reports in the database"""
     checker = Checker()
     client = ZulipClient(ZULIPRC)
-    unchecked_reports = list(PuzzleReport.select().where(PuzzleReport.checked == False))
-    
-    if not unchecked_reports:
-        log.info("No unchecked reports found")
-        return
-
-    # Process duplicates first
-    for report in unchecked_reports[:]:
+    unchecked_reports = PuzzleReport.select().where(PuzzleReport.checked == False)
+    for unchecked_report in unchecked_reports:
+        log.info(f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}")
+        # if a checked version exists with same puzzle id and move, skip
         if original := PuzzleReport.get_or_none(
-            PuzzleReport.puzzle_id == report.puzzle_id,
-            PuzzleReport.move == report.move,
+            PuzzleReport.puzzle_id == unchecked_report.puzzle_id,
+            PuzzleReport.move == unchecked_report.move,
             PuzzleReport.checked == True,
         ):
             log.debug(f"Found duplicate at {original.zulip_message_id}")
-            client.react(report.zulip_message_id, "repeat")
-            report.checked = True
-            report.save()
-            unchecked_reports.remove(report)
+            client.react(unchecked_report.zulip_message_id, "repeat")
+            unchecked_report.checked = True
+            unchecked_report.save()
+            continue
 
-    if not unchecked_reports:
-        log.info("All reports were duplicates")
-        return
-
-    # Use process pool for remaining reports
-    max_workers = workers or mp.cpu_count()
-    log.info(f"Processing {len(unchecked_reports)} reports with {max_workers} workers")
-    
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Map reports to checker in parallel
-        checked_reports = list(executor.map(checker.check_report, unchecked_reports))
-    
-    # Process results and update reactions
-    for checked_report in checked_reports:
+        checked_report = checker.check_report(unchecked_report)
         log.debug(
-            f"Issues of puzzle training/{checked_report.puzzle_id}: {checked_report.issues}"
+            f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}"
         )
         if checked_report.has_multiple_solutions:
             client.react(checked_report.zulip_message_id, "check")
         if checked_report.has_missing_mate_theme:
             client.react(checked_report.zulip_message_id, "price_tag")
+        # no issue, cross
         if checked_report.issues == 0:
             client.react(checked_report.zulip_message_id, "cross_mark")
         checked_report.save()
-    
     log.info("All reports checked")
 
 
