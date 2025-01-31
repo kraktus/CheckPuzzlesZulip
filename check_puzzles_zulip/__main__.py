@@ -62,7 +62,7 @@ def check_reports(db, workers: Optional[int] = None) -> None:
     checker = Checker()
     client = ZulipClient(ZULIPRC)
     unchecked_reports = list(PuzzleReport.select().where(PuzzleReport.checked == False))
-    
+
     if not unchecked_reports:
         log.info("No unchecked reports found")
         return
@@ -85,13 +85,13 @@ def check_reports(db, workers: Optional[int] = None) -> None:
         return
 
     # Use process pool for remaining reports
-    max_workers = workers or mp.cpu_count()
+    max_workers = workers or mp.process_cpu_count()
     log.info(f"Processing {len(unchecked_reports)} reports with {max_workers} workers")
-    
+
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Map reports to checker in parallel
         checked_reports = list(executor.map(checker.check_report, unchecked_reports))
-    
+
     # Process results and update reactions
     for checked_report in checked_reports:
         log.debug(
@@ -104,7 +104,7 @@ def check_reports(db, workers: Optional[int] = None) -> None:
         if checked_report.issues == 0:
             client.react(checked_report.zulip_message_id, "cross_mark")
         checked_report.save()
-    
+
     log.info("All reports checked")
 
 
@@ -160,7 +160,13 @@ def main() -> None:
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(func=lambda args: commands[args.command](db) if args.command != "check" else commands[args.command](db, args.workers))
+    run_parser.set_defaults(
+        func=lambda args: (
+            commands[args.command](db)
+            if args.command != "check"
+            else commands[args.command](db, args.workers)
+        )
+    )
 
     # reset parser
     reset_parser = subparser.add_parser(
