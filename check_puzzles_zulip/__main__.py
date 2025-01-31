@@ -13,8 +13,7 @@ import logging.handlers
 import os
 import sys
 import time
-import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor
+
 from argparse import RawTextHelpFormatter
 from collections import deque
 from dataclasses import dataclass
