@@ -62,7 +62,7 @@ def check_reports(db, workers: Optional[int] = None) -> None:
     checker = Checker()
     client = ZulipClient(ZULIPRC)
     unchecked_reports = list(PuzzleReport.select().where(PuzzleReport.checked == False))
-
+    
     if not unchecked_reports:
         log.info("No unchecked reports found")
         return
@@ -85,40 +85,26 @@ def check_reports(db, workers: Optional[int] = None) -> None:
         return
 
     # Use process pool for remaining reports
-    max_workers = workers or mp.process_cpu_count()
+    max_workers = workers or mp.cpu_count()
     log.info(f"Processing {len(unchecked_reports)} reports with {max_workers} workers")
-    processed_count = 0
-
+    
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks and get futures
-        future_to_report = {
-            executor.submit(checker.check_report, report): report 
-            for report in unchecked_reports
-        }
-        
-        # Process results as they complete
-        for future in concurrent.futures.as_completed(future_to_report):
-            try:
-                checked_report = future.result()
-                processed_count += 1
-                
-                log.debug(
-                    f"[{processed_count}/{len(unchecked_reports)}] Issues of puzzle "
-                    f"training/{checked_report.puzzle_id}: {checked_report.issues}"
-                )
-                
-                if checked_report.has_multiple_solutions:
-                    client.react(checked_report.zulip_message_id, "check")
-                if checked_report.has_missing_mate_theme:
-                    client.react(checked_report.zulip_message_id, "price_tag")
-                if checked_report.issues == 0:
-                    client.react(checked_report.zulip_message_id, "cross_mark")
-                checked_report.save()
-                
-            except Exception as e:
-                report = future_to_report[future]
-                log.error(f"Error processing report {report.puzzle_id}: {str(e)}")
-
+        # Map reports to checker in parallel
+        checked_reports = list(executor.map(checker.check_report, unchecked_reports))
+    
+    # Process results and update reactions
+    for checked_report in checked_reports:
+        log.debug(
+            f"Issues of puzzle training/{checked_report.puzzle_id}: {checked_report.issues}"
+        )
+        if checked_report.has_multiple_solutions:
+            client.react(checked_report.zulip_message_id, "check")
+        if checked_report.has_missing_mate_theme:
+            client.react(checked_report.zulip_message_id, "price_tag")
+        if checked_report.issues == 0:
+            client.react(checked_report.zulip_message_id, "cross_mark")
+        checked_report.save()
+    
     log.info("All reports checked")
 
 
@@ -174,13 +160,7 @@ def main() -> None:
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(
-        func=lambda args: (
-            commands[args.command](db)
-            if args.command != "check"
-            else commands[args.command](db, args.workers)
-        )
-    )
+    run_parser.set_defaults(func=lambda args: commands[args.command](db) if args.command != "check" else commands[args.command](db, args.workers))
 
     # reset parser
     reset_parser = subparser.add_parser(
