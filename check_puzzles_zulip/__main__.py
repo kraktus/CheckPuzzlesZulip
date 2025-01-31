@@ -170,18 +170,17 @@ def main() -> None:
 
     commands = {
         "fetch": fetch_reports,
-        "check": check_reports,
         "export": "todo",
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(
-        func=lambda args: (
-            commands[args.command](db)
-            if args.command != "check"
-            else commands[args.command](db, args.workers)
-        )
+    run_parser.set_defaults(func=lambda args: commands[args.command](db))
+
+    # check parser
+    check_parser = subparser.add_parser(
+        "check", help="Check puzzle reports"
     )
+    check_parser.set_defaults(func=lambda args: check_reports(db, args.workers))
 
     # reset parser
     reset_parser = subparser.add_parser(
