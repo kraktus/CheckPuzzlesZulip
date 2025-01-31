@@ -60,7 +60,9 @@ def check_reports(db) -> None:
     """Check the reports in the database"""
     checker = Checker()
     client = ZulipClient(ZULIPRC)
-    unchecked_reports = PuzzleReport.select().where(PuzzleReport.checked == False)
+    query = PuzzleReport.select().where(PuzzleReport.checked == False)
+    log.info(f"Checking {query.count()} reports")
+    unchecked_reports = query.execute()
     for unchecked_report in unchecked_reports:
         log.info(f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}")
         # if a checked version exists with same puzzle id and move, skip
@@ -88,6 +90,16 @@ def check_reports(db) -> None:
             client.react(checked_report.zulip_message_id, "cross_mark")
         checked_report.save()
     log.info("All reports checked")
+
+
+def export_reports(db) -> None:
+    """Export the puzzle ids with multiple solutions to a file"""
+    query = PuzzleReport.select().where(PuzzleReport.has_multiple_solutions == True)
+    reports = query.execute()
+    with open("multiple_solutions.txt", "w") as f:
+        for report in reports:
+            f.write(f"{report.puzzle_id}\n")
+    log.info(f"Exported {len(reports)} reports to multiple_solutions.txt")
 
 
 def reset_argparse(args) -> None:
@@ -131,7 +143,7 @@ def main() -> None:
     commands = {
         "fetch": fetch_reports,
         "check": check_reports,
-        "export": "todo",
+        "export": export_reports,
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
