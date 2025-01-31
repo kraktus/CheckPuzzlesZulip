@@ -56,7 +56,7 @@ def fetch_reports(db) -> None:
         log.info(f"{inserted_rows} new reports")
 
 
-def check_reports(db, workers: Optional[int] = None) -> None:
+def check_reports(db) -> None:
     """Check the reports in the database"""
     checker = Checker()
     client = ZulipClient(ZULIPRC)
@@ -118,13 +118,6 @@ def main() -> None:
         help="increase output verbosity",
         default=False,
     )
-    parser.add_argument(
-        "-w",
-        "--workers",
-        type=int,
-        help="number of worker processes (default: CPU count)",
-        default=None,
-    )
 
     # add arguments to subcommand
     subparser = parser.add_subparsers(required=True)
@@ -142,7 +135,7 @@ def main() -> None:
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(func=lambda args: commands[args.command](db) if args.command != "check" else commands[args.command](db, args.workers))
+    run_parser.set_defaults(func=lambda args: commands[args.command](db))
 
     # reset parser
     reset_parser = subparser.add_parser(
