@@ -75,17 +75,26 @@ class ZulipClient:
         log.debug(f"Fetching messages to unreact")
         resp = resp = self.zulip.get_messages(SEARCH_PARAMETERS)
         log.debug(f"Fetching response: {resp}")
-        emojis = []
+        mes_with_emojis: List[MessageWithReactions] = []
         for message in resp["messages"]:
+            emojis = []
             for reaction in message["reactions"]:
                 if reaction["user"]["email"] == self.zulip.email:
                     emojis.append(reaction["emoji_name"])
+            mes_with_emojis.append(MessageWithReactions(message["id"], emojis))
 
-        for emoji in emojis:
-            request = {
-                "message_id": message_id,
-                "emoji_name": emoji,
-            }
-            log.debug(f"Unreacting to message {message_id} with {emoji}")
-            resp = self.zulip.remove_reaction(request)
-            log.debug(f"Unreact response: {resp}")
+        for mes in mes_with_emojis:
+            for emoji in mes.reactions:
+                request = {
+                    "message_id": mes.message_id,
+                    "emoji_name": emoji,
+                }
+                log.debug(f"Unreacting to message {mes.message_id} with {emoji}")
+                resp = self.zulip.remove_reaction(request)
+                log.debug(f"Unreact response: {resp}")
+
+
+@dataclass
+class MessageWithReactions:
+    message_id: int
+    reactions: List[str]
