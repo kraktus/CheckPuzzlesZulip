@@ -8,7 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# local
 zuliprc
 zuliprc-prod
 *.log
 *.db
+multiple_solutions.txt
