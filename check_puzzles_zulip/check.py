@@ -11,7 +11,7 @@ from typing import Tuple, List
 from chess.engine import Score, Limit
 
 from .lichess import get_puzzle
-from .models import PuzzleReport
+from .models import PuzzleReport, Puzzle
 from .config import STOCKFISH, setup_logger
 
 log = setup_logger(__file__)
@@ -20,7 +20,7 @@ log = setup_logger(__file__)
 class Checker:
 
     def check_report(self, report: PuzzleReport) -> PuzzleReport:
-        puzzle = get_puzzle(str(report.puzzle_id))
+        puzzle = self._get_puzzle(str(report.puzzle_id))
         if puzzle.is_deleted:
             report.is_deleted_from_lichess = True
         else:
@@ -78,6 +78,10 @@ class Checker:
                 board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
             )
         return infos
+
+    # only defined to allow for override in tests
+    def _get_puzzle(self, puzzle_id: str) -> Puzzle:
+        return get_puzzle(puzzle_id)
 
 
 def default_converter(obj):

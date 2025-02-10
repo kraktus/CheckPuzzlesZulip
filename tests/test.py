@@ -2,13 +2,23 @@ from chess import WHITE, BLACK, Move
 from chess.engine import Score, Cp, Mate, PovScore
 
 from check_puzzles_zulip.parser import parse_report_v5_onward
-from check_puzzles_zulip.models import PuzzleReport, PuzzleReportDict
+from check_puzzles_zulip.models import PuzzleReport, PuzzleReportDict, Puzzle
 from check_puzzles_zulip.lichess import _fetch_puzzle
 from check_puzzles_zulip.check import _similar_eval, Checker
 from check_puzzles_zulip.models import setup_db
 
 import unittest
 import datetime
+
+
+def override_get_puzzle(p: Puzzle):
+    def mock_get_puzzle(puzzle_id):
+        if puzzle_id == p._id:
+            return p
+        else:
+            raise ValueError("TEST: inccorect puzzle fetched")
+
+    return mock_get_puzzle
 
 
 class Test(unittest.TestCase):
@@ -273,10 +283,18 @@ class Test(unittest.TestCase):
                 "time": 30.211,
             },
         ]
-
+        # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
+        puzzle_mock = Puzzle(
+            _id="XGeME",
+            initialPly=87,
+            solution="f6g6 a7a4",
+            themes="crushing defensiveMove endgame oneMove rookEndgame",
+            game_pgn="e4 d5 exd5 Qxd5 Nc3 Qa5 Bc4 Nf6 Nf3 Bg4 h3 Bxf3 Qxf3 Nc6 Bb5 O-O-O Bxc6 bxc6 Qxc6 Qe5+ Ne2 e6 Qa8+ Kd7 Qxa7 Bc5 Qa4+ Ke7 Qf4 Qh5 Qxc7+ Rd7 Qf4 g5 Qf3 g4 Qf4 Bd6 Ng3 Bxf4 Nxh5 Nxh5 hxg4 Nf6 g3 Bc7 g5 Ne4 d3 Nd6 b3 Ba5+ Bd2 Bxd2+ Kxd2 Ne4+ Ke3 Nxg5 f4 Rg8 fxg5 Rxg5 Rxh7 Rxg3+ Kd2 Rg2+ Kc3 Rc7+ Kb4 Rgxc2 Rh5 R2c3 d4 R3c6 Rc5 Rb7+ Kc4 Rcb6 a4 Rxb3 Rb5 R7xb5 axb5 Rb2 Ra7+ Kf6 Kc5",
+        )
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
@@ -361,7 +379,9 @@ class Test(unittest.TestCase):
                 "time": 31.64,
             },
         ]
+        mock_puzzle = Puzzle(_id="NtcHj", initialPly=98, solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3", themes="crushing endgame long master rookEndgame", game_pgn="d4 g6 c4 Bg7 Nc3 d6 e4 e5 d5 f5 Bd3 Nf6 f3 O-O Nge2 a5 Be3 f4 Bf2 g5 h3 h5 a3 b6 b4 g4 hxg4 hxg4 bxa5 Rxa5 Kd2 g3 Be1 Kf7 Nc1 Rh8 Rxh8 Qxh8 Nb3 Ra8 Kc2 Bd7 Bd2 Na6 Nb5 Bxb5 cxb5 Nc5 Bc4 Kg6 Nxc5 dxc5 a4 Ne8 a5 Nd6 Kb3 Qe8 Qe2 Qd7 Ra2 bxa5 Rxa5 Rh8 Qf1 Rh2 Qg1 Bf8 Bf1 Nb7 Ra6+ Kf7 Rc6 Bd6 Bc4 Nd8 Qf1 Qc8 Qc1 Rxg2 Bxf4 exf4 e5 Qf5 exd6 cxd6 Rxd6 Nb7 Re6 Na5+ Ka4 Nxc4 Qxc4 Qc2+ Qxc2 Rxc2 Re4 g2")
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        checker._get_puzzle = override_get_puzzle(mock_puzzle)
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
@@ -441,7 +461,10 @@ class Test(unittest.TestCase):
                 "time": 29.963,
             },
         ]
+
+        puzzle_mock = Puzzle(_id="5YpsY", initialPly=61, solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8", themes="clearance crushing endgame master pin veryLong", game_pgn="e4 d5 exd5 Qxd5 Nf3 Bg4 Be2 Nf6 O-O Nc6 h3 Bh5 c4 Qd7 Nc3 O-O-O d4 Bxf3 Bxf3 Nxd4 Be3 e5 Nd5 Nxf3+ Qxf3 Nxd5 cxd5 Qxd5 Qe2 Bc5 Rfd1 Bd4 Rac1 g6 Qg4+ f5 Qe2 Rhe8 Qc2 Re7 Qa4 a6 b4 Qb5 Qb3 Bxe3 Rxd8+ Kxd8 Qxe3 Qxb4 Qa7 c6 Qb8+ Kd7 Rd1+ Ke6 Qc8+ Kf7 Qh8 Qh4 Rd8")
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.has_multiple_solutions)
@@ -535,6 +558,7 @@ class Test(unittest.TestCase):
         self.assertTrue(report2.has_missing_mate_theme)
         self.assertTrue(report2.checked)
         db.close()
+
 
 
 if __name__ == "__main__":
