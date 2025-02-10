@@ -3,7 +3,7 @@ def debug_get_puzzle():
     import requests
 
     # from puzzle db
-    input_ = "5YpsY,3R3Q/1p2rk1p/p1p3p1/4pp2/7q/7P/P4PP1/6K1 b - - 9 31,e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8,2797,99,91,1555,clearance crushing endgame master pin veryLong,https://lichess.org/l0224RLL/black#62".split(
+    input_ = "2F0QF,2R3Q1/pp4p1/6kp/5p2/3n4/q5P1/P4PK1/8 w - - 2 35,c8c7 a3f3 g2h2 f3f2 h2h3 f2f1 h3h4 f1h1,1506,75,99,2040,endgame,https://lichess.org/jVY3OWGP#69".split(
         ","
     )
     puzzle_id = input_[0]

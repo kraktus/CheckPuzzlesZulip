@@ -379,7 +379,13 @@ class Test(unittest.TestCase):
                 "time": 31.64,
             },
         ]
-        mock_puzzle = Puzzle(_id="NtcHj", initialPly=98, solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3", themes="crushing endgame long master rookEndgame", game_pgn="d4 g6 c4 Bg7 Nc3 d6 e4 e5 d5 f5 Bd3 Nf6 f3 O-O Nge2 a5 Be3 f4 Bf2 g5 h3 h5 a3 b6 b4 g4 hxg4 hxg4 bxa5 Rxa5 Kd2 g3 Be1 Kf7 Nc1 Rh8 Rxh8 Qxh8 Nb3 Ra8 Kc2 Bd7 Bd2 Na6 Nb5 Bxb5 cxb5 Nc5 Bc4 Kg6 Nxc5 dxc5 a4 Ne8 a5 Nd6 Kb3 Qe8 Qe2 Qd7 Ra2 bxa5 Rxa5 Rh8 Qf1 Rh2 Qg1 Bf8 Bf1 Nb7 Ra6+ Kf7 Rc6 Bd6 Bc4 Nd8 Qf1 Qc8 Qc1 Rxg2 Bxf4 exf4 e5 Qf5 exd6 cxd6 Rxd6 Nb7 Re6 Na5+ Ka4 Nxc4 Qxc4 Qc2+ Qxc2 Rxc2 Re4 g2")
+        mock_puzzle = Puzzle(
+            _id="NtcHj",
+            initialPly=98,
+            solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3",
+            themes="crushing endgame long master rookEndgame",
+            game_pgn="d4 g6 c4 Bg7 Nc3 d6 e4 e5 d5 f5 Bd3 Nf6 f3 O-O Nge2 a5 Be3 f4 Bf2 g5 h3 h5 a3 b6 b4 g4 hxg4 hxg4 bxa5 Rxa5 Kd2 g3 Be1 Kf7 Nc1 Rh8 Rxh8 Qxh8 Nb3 Ra8 Kc2 Bd7 Bd2 Na6 Nb5 Bxb5 cxb5 Nc5 Bc4 Kg6 Nxc5 dxc5 a4 Ne8 a5 Nd6 Kb3 Qe8 Qe2 Qd7 Ra2 bxa5 Rxa5 Rh8 Qf1 Rh2 Qg1 Bf8 Bf1 Nb7 Ra6+ Kf7 Rc6 Bd6 Bc4 Nd8 Qf1 Qc8 Qc1 Rxg2 Bxf4 exf4 e5 Qf5 exd6 cxd6 Rxd6 Nb7 Re6 Na5+ Ka4 Nxc4 Qxc4 Qc2+ Qxc2 Rxc2 Re4 g2",
+        )
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
         checker._get_puzzle = override_get_puzzle(mock_puzzle)
         report2 = checker.check_report(report)
@@ -462,7 +468,13 @@ class Test(unittest.TestCase):
             },
         ]
 
-        puzzle_mock = Puzzle(_id="5YpsY", initialPly=61, solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8", themes="clearance crushing endgame master pin veryLong", game_pgn="e4 d5 exd5 Qxd5 Nf3 Bg4 Be2 Nf6 O-O Nc6 h3 Bh5 c4 Qd7 Nc3 O-O-O d4 Bxf3 Bxf3 Nxd4 Be3 e5 Nd5 Nxf3+ Qxf3 Nxd5 cxd5 Qxd5 Qe2 Bc5 Rfd1 Bd4 Rac1 g6 Qg4+ f5 Qe2 Rhe8 Qc2 Re7 Qa4 a6 b4 Qb5 Qb3 Bxe3 Rxd8+ Kxd8 Qxe3 Qxb4 Qa7 c6 Qb8+ Kd7 Rd1+ Ke6 Qc8+ Kf7 Qh8 Qh4 Rd8")
+        puzzle_mock = Puzzle(
+            _id="5YpsY",
+            initialPly=61,
+            solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8",
+            themes="clearance crushing endgame master pin veryLong",
+            game_pgn="e4 d5 exd5 Qxd5 Nf3 Bg4 Be2 Nf6 O-O Nc6 h3 Bh5 c4 Qd7 Nc3 O-O-O d4 Bxf3 Bxf3 Nxd4 Be3 e5 Nd5 Nxf3+ Qxf3 Nxd5 cxd5 Qxd5 Qe2 Bc5 Rfd1 Bd4 Rac1 g6 Qg4+ f5 Qe2 Rhe8 Qc2 Re7 Qa4 a6 b4 Qb5 Qb3 Bxe3 Rxd8+ Kxd8 Qxe3 Qxb4 Qa7 c6 Qb8+ Kd7 Rd1+ Ke6 Qc8+ Kf7 Qh8 Qh4 Rd8",
+        )
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
         checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = checker.check_report(report)
@@ -548,17 +560,24 @@ class Test(unittest.TestCase):
                 "time": 30.294,
             },
         ]
+        puzzle_mock = Puzzle(
+            _id="2F0QF",
+            initialPly=68,
+            solution="c8c7 a3f3 g2h2 f3f2 h2h3 f2f1 h3h4 f1h1",
+            themes="endgame",
+            game_pgn="e4 c6 c3 d5 exd5 cxd5 d4 Nf6 Nf3 Nc6 Be3 Bg4 Qd2 e6 Na3 Bxa3 bxa3 O-O c4 dxc4 Bxc4 Rc8 Bb3 Bxf3 gxf3 Nd5 O-O Qh4 Bg5 Qh3 Rae1 h6 Bf4 Qxf3 Bg3 Nce7 Rc1 Rxc1 Rxc1 Nf5 Bd1 Qe4 Be5 f6 Bc2 Qg4+ Bg3 Qxd4 Qa5 Nxg3 hxg3 Rc8 Qe1 Qb2 Bh7+ Kxh7 Rxc8 Nc3 Qxe6 Ne2+ Kg2 Nd4 Qe4+ f5 Qe8 Qxa3 Qg8+ Kg6",
+        )
 
         checker = Checker()
         # mock checker.engine.analyse and return dict_info instead
         checker.analyse_position = lambda board: dict_info_mock  # type: ignore
+        checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertFalse(report2.has_multiple_solutions)
         self.assertTrue(report2.has_missing_mate_theme)
         self.assertTrue(report2.checked)
         db.close()
-
 
 
 if __name__ == "__main__":
