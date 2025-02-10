@@ -12,7 +12,8 @@ def get_puzzle(puzzle_id: str) -> Puzzle:
     if puzzle is not None:
         return puzzle
     puzzle = _fetch_puzzle(puzzle_id)
-    puzzle.save()
+    log.debug(f"Creating puzzle {puzzle}")
+    puzzle.save(force_insert=True)
     return puzzle
 
 
@@ -21,6 +22,10 @@ def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     url = f"https://lichess.org/api/puzzle/{puzzle_id}"
     resp = requests.get(url)
     log.debug(f"Fetching puzzle {puzzle_id}, status: {resp.status_code} {resp.text}")
+    if resp.status_code == 404:
+        puzzle = Puzzle(_id=puzzle_id)
+        puzzle.is_deleted = True
+        return puzzle
     json = resp.json()
     return Puzzle(
         _id=json["puzzle"]["id"],

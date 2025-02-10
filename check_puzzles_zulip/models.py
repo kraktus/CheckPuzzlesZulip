@@ -53,7 +53,7 @@ class PuzzleReport(BaseModel):
 
     # if the report has been checked
     # not necessarily equal to `local_evaluation == ""`
-    # in case the report is a duplicate
+    # in case the report is a duplicate, or deleted
     checked = BooleanField(default=False)
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
@@ -62,6 +62,7 @@ class PuzzleReport(BaseModel):
     issues = BitField()
     has_multiple_solutions = issues.flag(1)
     has_missing_mate_theme = issues.flag(2)
+    is_deleted_from_lichess = issues.flag(4)
 
 
 # taken from the lichess api
@@ -99,18 +100,21 @@ class PuzzleReport(BaseModel):
 # }
 class Puzzle(BaseModel):
     _id = FixedCharField(5, primary_key=True)
-    initialPly = IntegerField()
-    solution = CharField()
+    initialPly = IntegerField(null=True)
+    solution = CharField(null=True)
     # themes, separated by spaces
-    themes = TextField()
+    themes = TextField(null=True)
     # moves, separated by spaces
-    game_pgn = TextField()
+    game_pgn = TextField(null=True)
+    status = BitField()
+    # not in the lichess anymore
+    is_deleted = status.flag(1)
 
     def color_to_win(self) -> chess.Color:
         return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK  # type: ignore
 
 
-def setup_db(name: str = "check_puzzles_zulip.db"):
+def setup_db(name: str):
     db.init(name)
     db.connect()
     db.create_tables([PuzzleReport, Puzzle])

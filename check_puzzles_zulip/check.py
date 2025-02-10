@@ -21,31 +21,36 @@ class Checker:
 
     def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = get_puzzle(str(report.puzzle_id))
-        board = chess.Board()
-        moves = str(puzzle.game_pgn).split()
-        log.info(f"Checking puzzle {puzzle._id}")
-        for move in moves:
-            board.push_san(move)
-        for move in str(puzzle.solution).split():
-            log.debug(f"Checking move {board.ply()}, {board.fen()}")
-            # report.move says that "after move {report.move}"
-            # while `fullmove_number` consider the current move, hence the disparity
-            if (
-                board.fullmove_number
-                == (
-                    report.move + 1
-                    if puzzle.color_to_win() == chess.WHITE
-                    else report.move
-                )
-                and board.turn == puzzle.color_to_win()
-            ):
+        if puzzle.is_deleted:
+            report.is_deleted_from_lichess = True
+        else:
+            board = chess.Board()
+            moves = str(puzzle.game_pgn).split()
+            log.info(f"Checking puzzle {puzzle._id}")
+            for move in moves:
+                board.push_san(move)
+            for move in str(puzzle.solution).split():
                 log.debug(f"Checking move {board.ply()}, {board.fen()}")
-                [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(board)
-                report.has_multiple_solutions = has_multi_sol
-                report.local_evaluation = eval_dump  # type: ignore
-            board.push_uci(move)
-        if board.is_checkmate() and not " mate " in puzzle.themes:
-            report.has_missing_mate_theme = True
+                # report.move says that "after move {report.move}"
+                # while `fullmove_number` consider the current move, hence the disparity
+                if (
+                    board.fullmove_number
+                    == (
+                        report.move + 1
+                        if puzzle.color_to_win() == chess.WHITE
+                        else report.move
+                    )
+                    and board.turn == puzzle.color_to_win()
+                ):
+                    log.debug(f"Checking move {board.ply()}, {board.fen()}")
+                    [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(
+                        board
+                    )
+                    report.has_multiple_solutions = has_multi_sol
+                    report.local_evaluation = eval_dump  # type: ignore
+                board.push_uci(move)
+            if board.is_checkmate() and not " mate " in puzzle.themes:
+                report.has_missing_mate_theme = True
 
         report.checked = True  # type: ignore
         return report
