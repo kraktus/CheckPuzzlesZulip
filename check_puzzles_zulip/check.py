@@ -2,13 +2,14 @@ import json
 import math
 import logging
 import datetime
+import asyncio
 
 import chess
 import chess.engine
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional, Union, Dict, Any
 
-from chess.engine import Score, Limit
+from chess.engine import Score, Limit, Protocol
 
 from .lichess import get_puzzle
 from .models import PuzzleReport, Puzzle
@@ -20,7 +21,10 @@ log = setup_logger(__file__)
 class Checker:
 
     def check_report(self, report: PuzzleReport) -> PuzzleReport:
-        puzzle = self._get_puzzle(str(report.puzzle_id))
+        return asyncio.run(self.check_report_async(report))
+        
+    async def check_report_async(self, report: PuzzleReport) -> PuzzleReport:
+        puzzle = await self._get_puzzle_async(str(report.puzzle_id))
         if puzzle.is_deleted:
             report.is_deleted_from_lichess = True
         else:
@@ -43,7 +47,7 @@ class Checker:
                     and board.turn == puzzle.color_to_win()
                 ):
                     log.debug(f"Checking move {board.ply()}, {board.fen()}")
-                    [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(
+                    [has_multi_sol, eval_dump] = await self.position_has_multiple_solutions_async(
                         board
                     )
                     report.has_multiple_solutions = has_multi_sol
@@ -56,8 +60,11 @@ class Checker:
         return report
 
     def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
+        return asyncio.run(self.position_has_multiple_solutions_async(board))
+        
+    async def position_has_multiple_solutions_async(self, board: chess.Board) -> Tuple[bool, str]:
         log.debug(f"Analyzing position {board.fen()}")
-        infos = self.analyse_position(board)
+        infos = await self.analyse_position_async(board)
         eval_dump = json.dumps(infos, default=default_converter)
         log.debug(f"eval_dump {infos}")
         # sort by score descending
@@ -73,15 +80,27 @@ class Checker:
 
     def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
-        with chess.engine.SimpleEngine.popen_uci(STOCKFISH) as engine:
-            infos = engine.analyse(
+        return asyncio.run(self.analyse_position_async(board))
+        
+    async def analyse_position_async(self, board: chess.Board) -> List[chess.engine.InfoDict]:
+        log.debug(f"Analyzing position async {board.fen()}")
+        transport, protocol = await chess.engine.popen_uci(STOCKFISH)
+        try:
+            infos = await protocol.analyse(
                 board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
             )
-        return infos
+            return infos
+        finally:
+            await protocol.quit()
 
     # only defined to allow for override in tests
     def _get_puzzle(self, puzzle_id: str) -> Puzzle:
         return get_puzzle(puzzle_id)
+        
+    async def _get_puzzle_async(self, puzzle_id: str) -> Puzzle:
+        # This is a synchronous function wrapped for async compatibility
+        # In a real implementation, get_puzzle might be made async as well
+        return self._get_puzzle(puzzle_id)
 
 
 def default_converter(obj):
@@ -93,7 +112,7 @@ def default_converter(obj):
         return str(obj)  # Fallback to string representation
 
 
-def _get_score(info: chess.engine.InfoDict, turn: chess.Color) -> Score | None:
+def _get_score(info: chess.engine.InfoDict, turn: chess.Color) -> Optional[Score]:
     score = info.get("score")
     if score is not None:
         return score.pov(turn)
@@ -129,6 +148,78 @@ def _multiple_solutions(score1: Score, score2: Score) -> bool:
         _similar_eval(score1, score2)
         and not (score1.mate() == 1 and score2.mate() == 1)
     )
+
+
+class AsyncChecker:
+    """Fully async version of the Checker class that can be used in async contexts."""
+    
+    async def check_report(self, report: PuzzleReport) -> PuzzleReport:
+        puzzle = await self._get_puzzle_async(str(report.puzzle_id))
+        if puzzle.is_deleted:
+            report.is_deleted_from_lichess = True
+        else:
+            board = chess.Board()
+            moves = str(puzzle.game_pgn).split()
+            log.info(f"Checking puzzle {puzzle._id}")
+            for move in moves:
+                board.push_san(move)
+            for move in str(puzzle.solution).split():
+                log.debug(f"Checking move {board.ply()}, {board.fen()}")
+                # report.move says that "after move {report.move}"
+                # while `fullmove_number` consider the current move, hence the disparity
+                if (
+                    board.fullmove_number
+                    == (
+                        report.move + 1
+                        if puzzle.color_to_win() == chess.WHITE
+                        else report.move
+                    )
+                    and board.turn == puzzle.color_to_win()
+                ):
+                    log.debug(f"Checking move {board.ply()}, {board.fen()}")
+                    [has_multi_sol, eval_dump] = await self.position_has_multiple_solutions(
+                        board
+                    )
+                    report.has_multiple_solutions = has_multi_sol
+                    report.local_evaluation = eval_dump  # type: ignore
+                board.push_uci(move)
+            if board.is_checkmate() and not " mate " in puzzle.themes:
+                report.has_missing_mate_theme = True
+
+        report.checked = True  # type: ignore
+        return report
+
+    async def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
+        log.debug(f"Analyzing position {board.fen()}")
+        infos = await self.analyse_position(board)
+        eval_dump = json.dumps(infos, default=default_converter)
+        log.debug(f"eval_dump {infos}")
+        # sort by score descending
+        turn = board.turn
+        infos.sort(key=lambda info: info["score"].pov(turn), reverse=True)  # type: ignore
+        bestEval, secondBestEval = _get_score(infos[0], turn), _get_score(
+            infos[1], turn
+        )
+        assert (
+            bestEval is not None and secondBestEval is not None
+        ), "bestEval and secondBestEval should not be None"
+        return _multiple_solutions(bestEval, secondBestEval), eval_dump
+
+    async def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
+        log.debug(f"Analyzing position async {board.fen()}")
+        transport, protocol = await chess.engine.popen_uci(STOCKFISH)
+        try:
+            infos = await protocol.analyse(
+                board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
+            )
+            return infos
+        finally:
+            await protocol.quit()
+
+    async def _get_puzzle_async(self, puzzle_id: str) -> Puzzle:
+        # This is a synchronous function wrapped for async compatibility
+        # In a real implementation, get_puzzle might be made async as well
+        return get_puzzle(puzzle_id)
 
 
 #         export const povDiff = (color: Color, e1: EvalScore, e2: EvalScore): number =>
