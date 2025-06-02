@@ -8,7 +8,7 @@ import chess.engine
 
 from typing import Tuple, List
 
-from chess.engine import Score, Limit
+from chess.engine import Score, Limit, Protocol
 
 from .lichess import get_puzzle
 from .models import PuzzleReport, Puzzle
@@ -19,7 +19,10 @@ log = setup_logger(__file__)
 
 class Checker:
 
-    def check_report(self, report: PuzzleReport) -> PuzzleReport:
+    def __init__(self, engine: Protocol):
+        self.engine = engine
+
+    async def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = self._get_puzzle(str(report.puzzle_id))
         if puzzle.is_deleted:
             report.is_deleted_from_lichess = True
@@ -43,8 +46,8 @@ class Checker:
                     and board.turn == puzzle.color_to_win()
                 ):
                     log.debug(f"Checking move {board.ply()}, {board.fen()}")
-                    [has_multi_sol, eval_dump] = self.position_has_multiple_solutions(
-                        board
+                    [has_multi_sol, eval_dump] = (
+                        await self.position_has_multiple_solutions(board)
                     )
                     report.has_multiple_solutions = has_multi_sol
                     report.local_evaluation = eval_dump  # type: ignore
@@ -55,9 +58,11 @@ class Checker:
         report.checked = True  # type: ignore
         return report
 
-    def position_has_multiple_solutions(self, board: chess.Board) -> Tuple[bool, str]:
+    async def position_has_multiple_solutions(
+        self, board: chess.Board
+    ) -> Tuple[bool, str]:
         log.debug(f"Analyzing position {board.fen()}")
-        infos = self.analyse_position(board)
+        infos = await self.analyse_position(board)
         eval_dump = json.dumps(infos, default=default_converter)
         log.debug(f"eval_dump {infos}")
         # sort by score descending
@@ -71,12 +76,11 @@ class Checker:
         ), "bestEval and secondBestEval should not be None"
         return _multiple_solutions(bestEval, secondBestEval), eval_dump
 
-    def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
+    async def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
-        with chess.engine.SimpleEngine.popen_uci(STOCKFISH) as engine:
-            infos = engine.analyse(
-                board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
-            )
+        infos = await self.engine.analyse(
+            board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
+        )
         return infos
 
     # only defined to allow for override in tests

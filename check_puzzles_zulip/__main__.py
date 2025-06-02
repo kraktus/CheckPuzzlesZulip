@@ -7,12 +7,16 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
 import logging.handlers
 import os
 import sys
 import time
+
+import chess
+import chess.engine
 
 from argparse import RawTextHelpFormatter
 from collections import deque
@@ -25,7 +29,7 @@ from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 from .check import Checker
 from .models import setup_db, PuzzleReport
 from .zulip import ZulipClient
-from .config import setup_logger, ZULIPRC
+from .config import setup_logger, ZULIPRC, STOCKFISH
 
 log = setup_logger(__file__)
 
@@ -56,13 +60,15 @@ def fetch_reports(db) -> None:
         log.info(f"{inserted_rows} new reports")
 
 
-def check_reports(db) -> None:
+async def async_check_reports(db) -> None:
     """Check the reports in the database"""
-    checker = Checker()
+
     client = ZulipClient(ZULIPRC)
     query = PuzzleReport.select().where(PuzzleReport.checked == False)
     log.info(f"Checking {query.count()} reports")
     unchecked_reports = query.execute()
+    transport, engine = await chess.engine.popen_uci(STOCKFISH)
+    checker = Checker(engine)
     for unchecked_report in unchecked_reports:
         log.info(f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}")
         # if a checked version exists with same puzzle id and move, skip
@@ -77,7 +83,7 @@ def check_reports(db) -> None:
             unchecked_report.save()
             continue
 
-        checked_report = checker.check_report(unchecked_report)
+        checked_report = await checker.check_report(unchecked_report)
         log.debug(
             f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}"
         )
@@ -89,7 +95,12 @@ def check_reports(db) -> None:
         if checked_report.issues == 0:
             client.react(checked_report.zulip_message_id, "cross_mark")
         checked_report.save()
+    await engine.quit()
     log.info("All reports checked")
+
+
+def check_reports(db) -> None:
+    asyncio.run(async_check_reports(db))
 
 
 def export_reports(db) -> None:
