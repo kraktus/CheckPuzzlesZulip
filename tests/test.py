@@ -400,6 +400,8 @@ if __name__ == "__main__":
         unittest.main()
     except Exit as e:
         print(f"Exiting with code {e.code}")
-        print("In case of import failure, try `uv run -m unittest tests/test.py` instead")
+        print(
+            "In case of import failure, try `uv run -m unittest tests/test.py` instead"
+        )
 
     # asyncio.run(test())
