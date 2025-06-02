@@ -8,7 +8,7 @@ import chess.engine
 
 from typing import Tuple, List
 
-from chess.engine import Score, Limit, Protocol
+from chess.engine import Score, Limit, UciProtocol
 
 from .lichess import get_puzzle
 from .models import PuzzleReport, Puzzle
@@ -19,7 +19,7 @@ log = setup_logger(__file__)
 
 class Checker:
 
-    def __init__(self, engine: Protocol):
+    def __init__(self, engine: UciProtocol):
         self.engine = engine
 
     async def check_report(self, report: PuzzleReport) -> PuzzleReport:

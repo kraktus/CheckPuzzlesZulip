@@ -31,7 +31,7 @@ def override_get_puzzle(p: Puzzle):
     return mock_get_puzzle
 
 
-ANALYSE_SIGN = inspect.signature(chess.engine.Protocol.analyse)
+ANALYSE_SIGN = inspect.signature(chess.engine.UciProtocol.analyse)
 
 
 def get_checksum_args(*args, **kwargs) -> int:
