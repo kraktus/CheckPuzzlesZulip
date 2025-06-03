@@ -64,6 +64,9 @@ class PuzzleReport(BaseModel):
     has_missing_mate_theme = issues.flag(2)
     is_deleted_from_lichess = issues.flag(4)
 
+    def debug_str(self) -> str:
+        return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
+
 
 # taken from the lichess api
 # https://lichess.org/api/puzzle/{id}

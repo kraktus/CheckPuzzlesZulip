@@ -16,10 +16,13 @@ import sys
 import time
 
 
+import peewee
 import chess
 import chess.engine
 
+from peewee import fn
 from argparse import RawTextHelpFormatter
+from playhouse.shortcuts import model_to_dict
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -30,9 +33,10 @@ from pathlib import Path
 from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
 from .check import Checker
-from .models import setup_db, PuzzleReport
-from .zulip import ZulipClient
 from .config import setup_logger, ZULIPRC, STOCKFISH
+from .lichess import update_puzzle_if_deleted, _fetch_puzzle
+from .models import setup_db, PuzzleReport, Puzzle
+from .zulip import ZulipClient
 
 log = setup_logger(__file__)
 
@@ -111,7 +115,7 @@ async def check_one_report(
                 zulip.react(checked_report.zulip_message_id, "check")
             if checked_report.has_missing_mate_theme:
                 zulip.react(checked_report.zulip_message_id, "price_tag")
-            # no issue, cross
+            # no issue, it's a false positive
             if checked_report.issues == 0:
                 zulip.react(checked_report.zulip_message_id, "cross_mark")
             checked_report.save()
@@ -142,10 +146,14 @@ def check_reports(db) -> None:
 
 def export_reports(db) -> None:
     """Export the puzzle ids with multiple solutions to a file"""
-    query = PuzzleReport.select().where(PuzzleReport.has_multiple_solutions == True)
+    query = PuzzleReport.select().where(
+        (PuzzleReport.has_multiple_solutions == True)
+        & (PuzzleReport.is_deleted_from_lichess == False)
+    )
     reports = query.execute()
     with open("multiple_solutions.txt", "w") as f:
         for report in reports:
+            print(report.debug_str())
             f.write(f"{report.puzzle_id}\n")
     log.info(f"Exported {len(reports)} reports to multiple_solutions.txt")
 
@@ -161,6 +169,79 @@ def reset_argparse(args) -> None:
         if args.reactions:
             zu = ZulipClient(ZULIPRC)
             zu.unreact_all()
+
+
+def stats(db) -> None:
+    """Print statistics about the reports in the database"""
+    # most reporters
+    reporter_limit = 20
+    query = (
+        PuzzleReport.select(
+            PuzzleReport.reporter, fn.COUNT(PuzzleReport.reporter).alias("count")
+        )
+        .group_by(PuzzleReport.reporter)
+        .order_by(fn.COUNT(PuzzleReport.reporter).desc())
+        .limit(reporter_limit)
+    )
+    top_reporters = query.execute()
+    print("-" * 10)
+    print(f"Top {reporter_limit} reporters:")
+    for reporter in top_reporters:
+        print(f"{reporter.reporter}: {reporter.count}")
+
+    # most reported puzzles
+    puzzle_limit = 20
+    query = (
+        PuzzleReport.select(
+            PuzzleReport.puzzle_id, fn.COUNT(PuzzleReport.puzzle_id).alias("count")
+        )
+        .group_by(PuzzleReport.puzzle_id)
+        .order_by(fn.COUNT(PuzzleReport.puzzle_id).desc())
+        .limit(puzzle_limit)
+    )
+    top_puzzles = query.execute()
+    print(f"Top {puzzle_limit} puzzles:")
+    for puzzle in top_puzzles:
+        print(f"{puzzle.puzzle_id}: {puzzle.count}")
+
+
+def check_delete_puzzles(db) -> None:
+    """Fetch puzzles from lichess and mark them as deleted if they do not exist"""
+
+    # first, integrity check, make sure every report has an associated puzzle
+    log.info("Integrity check: every report should have a puzzle")
+    reports_without_puzzles = (
+        PuzzleReport.select()
+        .join(
+            Puzzle,
+            on=(PuzzleReport.puzzle_id == Puzzle._id),
+            join_type=peewee.JOIN.LEFT_OUTER,
+        )
+        .where(Puzzle._id.is_null())
+    )
+    log.info(f"Found {reports_without_puzzles.count()} reports without puzzles")
+    for report in reports_without_puzzles:
+        puzzle = _fetch_puzzle(report.puzzle_id)
+        puzzle.save(force_insert=True)
+        time.sleep(0.4)  # avoid too many requests
+    log.info("Integrity check done, all reports have a puzzle")
+
+    puzzles = Puzzle.select().where(Puzzle.is_deleted == False)
+    nb_deleted = 0
+    for puzzle in puzzles:
+        if update_puzzle_if_deleted(puzzle):
+            nb_deleted += 1
+        time.sleep(0.4)  # avoid too many requests
+    log.info(f"{nb_deleted} new puzzles deleted from lichess")
+    query = (
+        PuzzleReport.select(PuzzleReport, Puzzle)
+        .join(Puzzle, on=(PuzzleReport.puzzle_id == Puzzle._id))
+        .where((Puzzle.is_deleted == True))
+    )
+    for report in query.execute():
+        log.info(f"Marking report {report.zulip_message_id} as deleted from lichess")
+        report.is_deleted_from_lichess = True
+        report.save()
 
 
 def main() -> None:
@@ -192,6 +273,8 @@ def main() -> None:
         "fetch": fetch_reports,
         "check": check_reports,
         "export": export_reports,
+        "stats": stats,
+        "delete": check_delete_puzzles,
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
