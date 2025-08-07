@@ -34,7 +34,7 @@ from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 
 from .check import Checker
 from .config import setup_logger, ZULIPRC, STOCKFISH
-from .lichess import update_puzzle_if_deleted, _fetch_puzzle
+from .lichess import is_puzzle_deleted, _fetch_puzzle
 from .models import setup_db, PuzzleReport, Puzzle
 from .zulip import ZulipClient
 
@@ -226,22 +226,25 @@ def check_delete_puzzles(db) -> None:
         time.sleep(0.4)  # avoid too many requests
     log.info("Integrity check done, all reports have a puzzle")
 
-    puzzles = Puzzle.select().where(Puzzle.is_deleted == False)
+    # Only check puzzle reports with issues, to save on query time
+    puzzles_reports_with_issues = PuzzleReport.select().where(PuzzleReport.issues != 0 & PuzzleReport.is_deleted_from_lichess == False)
     nb_deleted = 0
-    for puzzle in puzzles:
-        if update_puzzle_if_deleted(puzzle):
+    for report in puzzles_reports_with_issues.execute():
+        if is_puzzle_deleted(report.puzzle_id):
             nb_deleted += 1
+            report.is_deleted_from_lichess = True
+            report.save()
         time.sleep(0.4)  # avoid too many requests
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
     query = (
-        PuzzleReport.select(PuzzleReport, Puzzle)
-        .join(Puzzle, on=(PuzzleReport.puzzle_id == Puzzle._id))
+        Puzzle.select(Puzzle, PuzzleReport)
+        .join(PuzzleReport, on=(Puzzle._id == PuzzleReport.puzzle_id))
         .where((Puzzle.is_deleted == True))
     )
-    for report in query.execute():
-        log.info(f"Marking report {report.zulip_message_id} as deleted from lichess")
-        report.is_deleted_from_lichess = True
-        report.save()
+    for puzzle in query.execute():
+        log.info(f"Marking report {puzzle._id} as deleted from lichess")
+        puzzle.is_deleted = True
+        puzzle.save()
 
 
 def main() -> None:
