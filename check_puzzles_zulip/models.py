@@ -1,30 +1,8 @@
 import chess
-
-from typing import TypedDict
-
-from peewee import (
-    Model,
-    FixedCharField,
-    CompositeKey,
-    CharField,
-    IntegerField,
-    TextField,
-    BooleanField,
-    BitField,
-    AutoField,
-    SqliteDatabase,
-)
+from typing import TypedDict, Optional
+from sqlmodel import SQLModel, Field, create_engine, Session
 
 
-db = SqliteDatabase(None)
-
-
-class BaseModel(Model):
-    class Meta:
-        database = db
-
-
-# needed to allow to use insert_many in db...
 class PuzzleReportDict(TypedDict):
     reporter: str
     puzzle_id: str
@@ -38,31 +16,30 @@ class PuzzleReportDict(TypedDict):
     issues: str
 
 
-class PuzzleReport(BaseModel):
-    zulip_message_id = CharField(primary_key=True)
-    reporter = CharField()
-    puzzle_id = FixedCharField(
-        5
-    )  # maybe multiple reports about the same puzzle but not for the same move
-    report_version = IntegerField()
-    # not present before v5
-    sf_version = CharField()
-    move = IntegerField()  # move, not plies, starting from 1
-    # for future compatibility and debugging
-    details = TextField()
+class PuzzleReport(SQLModel, table=True):
+    __tablename__ = "puzzlereport"
+    
+    zulip_message_id: str = Field(primary_key=True)
+    reporter: str
+    puzzle_id: str = Field(max_length=5)  # FixedCharField(5) equivalent
+    report_version: int
+    sf_version: str
+    move: int  # move, not plies, starting from 1
+    details: str  # TextField equivalent
 
     # if the report has been checked
     # not necessarily equal to `local_evaluation == ""`
     # in case the report is a duplicate, or deleted
-    checked = BooleanField(default=False)
+    checked: bool = Field(default=False)
+    
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
-    local_evaluation = TextField()
-
-    issues = BitField()
-    has_multiple_solutions = issues.flag(1)
-    has_missing_mate_theme = issues.flag(2)
-    is_deleted_from_lichess = issues.flag(4)
+    local_evaluation: str = Field(default="")
+    
+    # Converting BitField to separate boolean fields for better type safety
+    has_multiple_solutions: bool = Field(default=False)
+    has_missing_mate_theme: bool = Field(default=False)
+    is_deleted_from_lichess: bool = Field(default=False)
 
     def debug_str(self) -> str:
         return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
@@ -101,26 +78,41 @@ class PuzzleReport(BaseModel):
 # ]
 # }
 # }
-class Puzzle(BaseModel):
-    _id = FixedCharField(5, primary_key=True)
-    initialPly = IntegerField(null=True)
-    solution = CharField(null=True)
-    # themes, separated by spaces
-    themes = TextField(null=True)
-    # moves, separated by spaces
-    game_pgn = TextField(null=True)
-    status = BitField()
-    # not in the lichess anymore
-    is_deleted = status.flag(1)
+class Puzzle(SQLModel, table=True):
+    __tablename__ = "puzzle"
+    
+    _id: str = Field(primary_key=True, max_length=5)  # FixedCharField(5) equivalent
+    initialPly: Optional[int] = Field(default=None)
+    solution: Optional[str] = Field(default=None)
+    themes: Optional[str] = Field(default=None)  # themes, separated by spaces
+    game_pgn: Optional[str] = Field(default=None)  # moves, separated by spaces
+    
+    # Converting BitField to boolean field
+    is_deleted: bool = Field(default=False)
 
     def color_to_win(self) -> chess.Color:
         return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK  # type: ignore
 
 
+# Global engine variable
+engine = None
+
+
 def setup_db(name: str):
-    db.init(name)
-    db.connect()
-    db.create_tables([PuzzleReport, Puzzle])
-    # import time
-    # time.sleep(15)
-    return db
+    global engine
+    
+    if name == ":memory:":
+        database_url = "sqlite:///:memory:"
+    else:
+        database_url = f"sqlite:///{name}"
+    
+    engine = create_engine(database_url, echo=False)
+    SQLModel.metadata.create_all(engine)
+    return engine
+
+
+def get_session() -> Session:
+    global engine
+    if engine is None:
+        raise RuntimeError("Database not initialized. Call setup_db first.")
+    return Session(engine)
