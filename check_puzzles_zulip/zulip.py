@@ -8,7 +8,7 @@ from typing import Any, List, Dict, Literal
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry  # type: ignore
 
-from .models import PuzzleReport
+from .models import PuzzleReportDict
 from .parser import parse_report_v5_onward
 from .config import ZULIP_CHANNEL, ZULIP_TOPIC, ZULIP_REPORTER, setup_logger
 
@@ -46,7 +46,7 @@ class ZulipClient:
     def __init__(self, zuliprc_path: str):
         self.zulip = zulip.Client(config_file=zuliprc_path)
 
-    def get_puzzle_reports(self) -> List[PuzzleReport]:
+    def get_puzzle_reports(self) -> List[PuzzleReportDict]:
         resp = self.zulip.get_messages(SEARCH_PARAMETERS)
         log.debug(f"get_messages response: {resp}")
         messages = resp.get("messages", [])
