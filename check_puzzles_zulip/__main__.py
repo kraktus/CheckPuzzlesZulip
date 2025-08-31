@@ -227,7 +227,9 @@ def check_delete_puzzles(db) -> None:
     log.info("Integrity check done, all reports have a puzzle")
 
     # Only check puzzle reports with issues, to save on query time
-    puzzles_reports_with_issues = PuzzleReport.select().where(PuzzleReport.issues != 0 & PuzzleReport.is_deleted_from_lichess == False)
+    puzzles_reports_with_issues = PuzzleReport.select().where(
+        PuzzleReport.issues != 0 & PuzzleReport.is_deleted_from_lichess == False
+    )
     nb_deleted = 0
     for report in puzzles_reports_with_issues.execute():
         if is_puzzle_deleted(report.puzzle_id):

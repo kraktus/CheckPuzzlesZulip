@@ -44,5 +44,5 @@ def _internal_fetch_puzzle(puzzle_id: str) -> requests.Response:
 
 def is_puzzle_deleted(puzzle_id: str) -> bool:
     """Update a puzzle in the database, if deleted from lichess. return `True` if deleted"""
-    resp = _internal_fetch_puzzle(puzzle_id) # type: ignore
+    resp = _internal_fetch_puzzle(puzzle_id)  # type: ignore
     return resp.status_code == 404

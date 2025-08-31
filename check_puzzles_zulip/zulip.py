@@ -25,10 +25,7 @@ RETRY_STRAT = Retry(
 )
 ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
 
-
-# TODO make it so it chunks by 5000 to be sure it gets all the messages
-SEARCH_PARAMETERS = {
-    "anchor": "oldest",
+SEARCH_PARAMETERS_TEMPLATE = {
     "num_before": 0,
     "num_after": 5000,
     "narrow": [
@@ -46,11 +43,36 @@ class ZulipClient:
     def __init__(self, zuliprc_path: str):
         self.zulip = zulip.Client(config_file=zuliprc_path)
 
+    def get_messages(self) -> List[Dict[str, Any]]:
+        """
+        Fetches all messages matching the search parameters, chunked by 5000 messages.
+        Returns a list of all messages.
+        """
+        all_messages = []
+        anchor = None
+
+        while "not all messages fetched":
+            params = SEARCH_PARAMETERS_TEMPLATE.copy()
+            if anchor is not None:
+                params["anchor"] = anchor
+                params["include_anchor"] = False  # default to `True`
+            else:
+                params["anchor"] = "oldest"
+            resp = self.zulip.get_messages(params)
+            log.debug(f"Messages fetched: {resp}")
+
+            messages = resp.get("messages", [])
+            all_messages.extend(messages)
+
+            if len(messages) < 5000:
+                break
+
+            anchor = messages[-1]["id"]
+
+        return all_messages
+
     def get_puzzle_reports(self) -> List[PuzzleReport]:
-        resp = self.zulip.get_messages(SEARCH_PARAMETERS)
-        log.debug(f"get_messages response: {resp}")
-        messages = resp.get("messages", [])
-        log.debug(f"Messages fetched: {messages}")
+        messages = self.get_messages()
         reports = []
         for message in messages:
             puzzle_report = parse_report_v5_onward(message["content"], message["id"])
@@ -73,10 +95,9 @@ class ZulipClient:
     def unreact_all(self) -> None:
         # first fetch the messages to get the reactions
         log.debug(f"Fetching messages to unreact")
-        resp = resp = self.zulip.get_messages(SEARCH_PARAMETERS)
-        log.debug(f"Fetching response: {resp}")
+        messages = self.get_messages()
         mes_with_emojis: List[MessageWithReactions] = []
-        for message in resp["messages"]:
+        for message in messages:
             emojis = []
             for reaction in message["reactions"]:
                 if reaction["user"]["email"] == self.zulip.email:
