@@ -285,6 +285,19 @@ def main() -> None:
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
     run_parser.set_defaults(func=lambda args: commands[args.command](db))
 
+    go_parser = subparser.add_parser(
+        "go", help="Run sequentially combination of simple commands"
+    )
+    go_parser.add_argument(
+        "commands",
+        nargs="+",
+        choices=commands.keys(),
+        help="Commands to run sequentially\n" + doc(commands),
+    )
+    go_parser.set_defaults(
+        func=lambda args: [commands[cmd](db) for cmd in args.commands]
+    )
+
     # reset parser
     reset_parser = subparser.add_parser(
         "reset", help="Reset part of the database/state"
