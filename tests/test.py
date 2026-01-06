@@ -26,7 +26,7 @@ def override_get_puzzle(p: Puzzle):
         if puzzle_id == p.id:
             return p
         else:
-            raise ValueError("TEST: inccorect puzzle fetched")
+            raise ValueError("TEST: incorrect puzzle fetched")
 
     return mock_get_puzzle
 
