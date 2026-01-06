@@ -135,15 +135,30 @@ async def check_one_report(
                 f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}"
             )
             checked_report = await checker.check_report(unchecked_report)
+            # Check which issues were detected
+            issues_found = []
+            if checked_report.is_multiple_solutions_detected():
+                issues_found.append("multiple_solutions")
+            if checked_report.is_missing_mate_theme_detected():
+                issues_found.append("missing_mate_theme")
+            if checked_report.is_deleted_detected():
+                issues_found.append("deleted_from_lichess")
+
             log.debug(
-                f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}"
+                f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {issues_found}"
             )
             if checked_report.is_multiple_solutions_detected():
                 zulip.react(checked_report.zulip_message_id, "check")
             if checked_report.is_missing_mate_theme_detected():
                 zulip.react(checked_report.zulip_message_id, "price_tag")
             # no issue, it's a false positive
-            if checked_report.issues == 0:
+            if not any(
+                [
+                    checked_report.is_multiple_solutions_detected(),
+                    checked_report.is_missing_mate_theme_detected(),
+                    checked_report.is_deleted_detected(),
+                ]
+            ):
                 zulip.react(checked_report.zulip_message_id, "cross_mark")
 
             # Save the report
@@ -283,7 +298,13 @@ def check_delete_puzzles(engine: Engine) -> None:
     with Session(engine) as session:
         statement = (
             select(PuzzleReport)
-            .where(PuzzleReport.issues != 0)
+            .where(
+                or_(
+                    PuzzleReport.has_multiple_solutions.is_not(None),
+                    PuzzleReport.has_missing_mate_theme.is_not(None),
+                    PuzzleReport.is_deleted_from_lichess.is_not(None),
+                )
+            )
             .where(PuzzleReport.is_deleted_from_lichess.is_(None))  # not deleted
         )
         puzzles_reports_with_issues = list(session.exec(statement).all())

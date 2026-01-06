@@ -319,13 +319,13 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         # reported NtcHj because (v5) after move 50. Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3
         report = PuzzleReport(
             reporter="xxx",
-            puzzleid="NtcHj",
+            puzzle_id="NtcHj",
             report_version=5,
             sf_version="",
             move=50,
             details="Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3",
             local_evaluation="",
-            zulip_messageid="1",
+            zulip_message_id="1",
         )
         mock_puzzle = Puzzle(
             id="NtcHj",

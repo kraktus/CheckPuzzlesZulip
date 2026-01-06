@@ -65,6 +65,7 @@ uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py puzzle_
   - Helper methods: `is_multiple_solutions_detected()`, `is_missing_mate_theme_detected()`, `is_deleted_detected()`
 
 **Puzzle table:**
+- Primary key column: `id` (was `_id` in peewee)
 - `status`: Bitfield stored as INTEGER
   - Bit 1: is_deleted
 

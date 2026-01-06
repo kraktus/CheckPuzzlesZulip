@@ -54,18 +54,6 @@ class PuzzleReport(SQLModel, table=True):
         """Check if deleted from lichess issue is set"""
         return self.is_deleted_from_lichess is not None
 
-    @property
-    def issues(self) -> int:
-        """Compatibility property that returns bitfield representation"""
-        result = 0
-        if self.has_multiple_solutions is not None:
-            result |= 1
-        if self.has_missing_mate_theme is not None:
-            result |= 2
-        if self.is_deleted_from_lichess is not None:
-            result |= 4
-        return result
-
     def debug_str(self) -> str:
         return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
 
@@ -73,7 +61,7 @@ class PuzzleReport(SQLModel, table=True):
 class Puzzle(SQLModel, table=True):
     __tablename__ = "puzzle"  # type: ignore
 
-    id: str = Field(primary_key=True, max_length=5, sa_column_kwargs={"name": "_id"})
+    id: str = Field(primary_key=True, max_length=5)
     initialPly: Optional[int] = None
     solution: Optional[str] = None
     themes: Optional[str] = None  # themes, separated by spaces
