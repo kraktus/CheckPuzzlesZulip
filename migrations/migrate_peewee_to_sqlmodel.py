@@ -3,9 +3,9 @@
 Migration script to migrate a SQLite database from peewee schema to sqlmodel schema.
 
 This script:
-1. Reads data from the old peewee database
+1. Reads data from the old peewee database using peewee models
 2. Creates a new database with sqlmodel schema
-3. Migrates all data from old to new database
+3. Migrates all data from old to new database using sqlmodel models
 4. Creates a backup of the old database
 
 Usage:
@@ -16,10 +16,73 @@ Example:
 """
 
 import sys
-import sqlite3
 import shutil
 from pathlib import Path
 from datetime import datetime
+
+# Import peewee for reading old database
+from peewee import (
+    Model,
+    FixedCharField,
+    CharField,
+    IntegerField,
+    TextField,
+    BooleanField,
+    BitField,
+    SqliteDatabase,
+)
+
+# Import sqlmodel for writing new database
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from check_puzzles_zulip.models import (
+    setup_db as setup_sqlmodel_db,
+    get_session,
+    PuzzleReport as SQLModelPuzzleReport,
+    Puzzle as SQLModelPuzzle,
+)
+
+
+# Peewee models for reading old database
+old_db = SqliteDatabase(None)
+
+
+class PeeweeBaseModel(Model):
+    class Meta:
+        database = old_db
+
+
+class PeeweePuzzleReport(PeeweeBaseModel):
+    zulip_message_id = CharField(primary_key=True)
+    reporter = CharField()
+    puzzle_id = FixedCharField(5)
+    report_version = IntegerField()
+    sf_version = CharField()
+    move = IntegerField()
+    details = TextField()
+    checked = BooleanField(default=False)
+    local_evaluation = TextField()
+    issues = BitField()
+    has_multiple_solutions = issues.flag(1)
+    has_missing_mate_theme = issues.flag(2)
+    is_deleted_from_lichess = issues.flag(4)
+
+    class Meta:
+        table_name = "puzzlereport"
+
+
+class PeeweePuzzle(PeeweeBaseModel):
+    _id = FixedCharField(5, primary_key=True)
+    initialPly = IntegerField(null=True)
+    solution = CharField(null=True)
+    themes = TextField(null=True)
+    game_pgn = TextField(null=True)
+    status = BitField()
+    is_deleted = status.flag(1)
+
+    class Meta:
+        table_name = "puzzle"
 
 
 def migrate_database(old_db_path: str) -> None:
@@ -37,112 +100,59 @@ def migrate_database(old_db_path: str) -> None:
     print(f"Creating backup: {backup_path}")
     shutil.copy2(old_db_path, backup_path)
 
-    # Connect to old database
+    # Connect to old database with peewee
     print(f"Reading from old database: {old_db_path}")
-    old_conn = sqlite3.connect(old_db_path)
-    old_conn.row_factory = sqlite3.Row
-    old_cursor = old_conn.cursor()
+    old_db.init(str(old_db_path))
+    old_db.connect()
 
-    # Read old data
+    # Read old data using peewee models
     print("Reading PuzzleReport data...")
-    old_cursor.execute("SELECT * FROM puzzlereport")
-    puzzle_reports = [dict(row) for row in old_cursor.fetchall()]
-    print(f"Found {len(puzzle_reports)} puzzle reports")
+    old_reports = list(PeeweePuzzleReport.select())
+    print(f"Found {len(old_reports)} puzzle reports")
 
     print("Reading Puzzle data...")
-    old_cursor.execute("SELECT * FROM puzzle")
-    puzzles = [dict(row) for row in old_cursor.fetchall()]
-    print(f"Found {len(puzzles)} puzzles")
+    old_puzzles = list(PeeweePuzzle.select())
+    print(f"Found {len(old_puzzles)} puzzles")
 
-    old_conn.close()
+    old_db.close()
 
-    # Create new database with sqlmodel schema
+    # Create new database with sqlmodel
     new_db_path = old_db_path.with_suffix(".new.db")
     print(f"Creating new database: {new_db_path}")
+    setup_sqlmodel_db(str(new_db_path))
 
-    new_conn = sqlite3.connect(new_db_path)
-    new_cursor = new_conn.cursor()
-
-    # Create tables with new schema
-    print("Creating new schema...")
-    new_cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS puzzlereport (
-            zulip_message_id TEXT PRIMARY KEY NOT NULL,
-            reporter TEXT NOT NULL,
-            puzzle_id TEXT NOT NULL,
-            report_version INTEGER NOT NULL,
-            sf_version TEXT NOT NULL,
-            move INTEGER NOT NULL,
-            details TEXT NOT NULL,
-            checked INTEGER NOT NULL DEFAULT 0,
-            local_evaluation TEXT NOT NULL,
-            issues INTEGER NOT NULL DEFAULT 0
-        )
-    """
-    )
-
-    new_cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS puzzle (
-            _id TEXT PRIMARY KEY NOT NULL,
-            initialPly INTEGER,
-            solution TEXT,
-            themes TEXT,
-            game_pgn TEXT,
-            status INTEGER NOT NULL DEFAULT 0
-        )
-    """
-    )
-
-    # Migrate PuzzleReport data
+    # Migrate data using sqlmodel
     print("Migrating puzzle reports...")
-    for report in puzzle_reports:
-        # Convert zulip_message_id to string if it's not already
-        zulip_id = str(report["zulip_message_id"])
+    with get_session() as session:
+        for old_report in old_reports:
+            new_report = SQLModelPuzzleReport(
+                zulip_message_id=str(old_report.zulip_message_id),
+                reporter=old_report.reporter,
+                puzzle_id=old_report.puzzle_id,
+                report_version=old_report.report_version,
+                sf_version=old_report.sf_version or "",
+                move=old_report.move,
+                details=old_report.details,
+                checked=old_report.checked,
+                local_evaluation=old_report.local_evaluation or "",
+                issues=old_report.issues,
+            )
+            session.add(new_report)
+        session.commit()
 
-        new_cursor.execute(
-            """
-            INSERT INTO puzzlereport (
-                zulip_message_id, reporter, puzzle_id, report_version,
-                sf_version, move, details, checked, local_evaluation, issues
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            (
-                zulip_id,
-                report["reporter"],
-                report["puzzle_id"],
-                report["report_version"],
-                report.get("sf_version", ""),
-                report["move"],
-                report["details"],
-                1 if report["checked"] else 0,
-                report["local_evaluation"],
-                report["issues"],
-            ),
-        )
-
-    # Migrate Puzzle data
     print("Migrating puzzles...")
-    for puzzle in puzzles:
-        new_cursor.execute(
-            """
-            INSERT INTO puzzle (
-                _id, initialPly, solution, themes, game_pgn, status
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """,
-            (
-                puzzle["_id"],
-                puzzle["initialPly"],
-                puzzle["solution"],
-                puzzle["themes"],
-                puzzle["game_pgn"],
-                puzzle["status"],
-            ),
-        )
-
-    new_conn.commit()
-    new_conn.close()
+    with get_session() as session:
+        for old_puzzle in old_puzzles:
+            new_puzzle = SQLModelPuzzle(
+                id=old_puzzle._id,
+                initialPly=old_puzzle.initialPly,
+                solution=old_puzzle.solution,
+                themes=old_puzzle.themes,
+                game_pgn=old_puzzle.game_pgn,
+                status=old_puzzle.status,
+            )
+            session.add(new_puzzle)
+        session.commit()
 
     # Replace old database with new one
     print(f"Replacing old database with new schema...")

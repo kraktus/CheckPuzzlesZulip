@@ -17,3 +17,6 @@ dev = [
     "black>=24.8.0",
     "pyright>=1.1.393",
 ]
+migration = [
+    "peewee>=3.17.8",
+]

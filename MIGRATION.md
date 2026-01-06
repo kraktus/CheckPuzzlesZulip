@@ -52,14 +52,19 @@ with get_session() as session:
 If you have an existing database, you **must** run the migration script:
 
 ```bash
-python migrations/migrate_peewee_to_sqlmodel.py path/to/your/puzzle_reports.db
+# First, install migration dependencies (includes peewee)
+uv sync --group migration
+
+# Then run the migration
+uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py path/to/your/puzzle_reports.db
 ```
 
 This script will:
 1. Create a timestamped backup of your database
-2. Migrate the schema to the new format
-3. Convert all data (including type conversions)
-4. Replace the old database with the new one
+2. Read data from the old database using peewee models
+3. Create a new database with sqlmodel schema
+4. Write data to the new database using sqlmodel models
+5. Replace the old database with the new one
 
 **Note**: The migration converts `zulip_message_id` from INTEGER to TEXT. All data is preserved.
 

@@ -11,25 +11,33 @@ This script migrates an existing SQLite database from the old peewee schema to t
 #### What it does:
 
 1. Creates a backup of the original database with a timestamp
-2. Reads all data from the old database (PuzzleReport and Puzzle tables)
+2. Reads all data from the old database using peewee models (PuzzleReport and Puzzle tables)
 3. Creates a new database with the sqlmodel schema
-4. Migrates all data, converting field types as needed:
+4. Migrates all data using sqlmodel models, converting field types as needed:
    - `zulip_message_id`: Converted from integer to string (primary key)
    - All boolean fields stored as integers (0/1)
    - Bitfield values preserved as integers
 5. Replaces the old database with the migrated version
 
+#### Installation:
+
+First, install the migration dependencies (includes peewee):
+
+```bash
+uv sync --group migration
+```
+
 #### Usage:
 
 ```bash
-python migrations/migrate_peewee_to_sqlmodel.py <path_to_database>
+uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py <path_to_database>
 ```
 
 #### Example:
 
 ```bash
 # Migrate the main database
-python migrations/migrate_peewee_to_sqlmodel.py puzzle_reports.db
+uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py puzzle_reports.db
 ```
 
 #### Safety:
@@ -37,6 +45,12 @@ python migrations/migrate_peewee_to_sqlmodel.py puzzle_reports.db
 - The script creates a timestamped backup before making any changes
 - The backup is saved in the same directory with the format: `<original_name>.backup_YYYYMMDD_HHMMSS.db`
 - If something goes wrong, you can restore from the backup
+
+#### Implementation Details:
+
+- **Reading**: Uses peewee models to read from the old database (cleaner than raw SQL)
+- **Writing**: Uses sqlmodel models to write to the new database
+- **Type Safety**: Both reading and writing benefit from ORM type checking
 
 #### Schema Changes:
 
@@ -59,3 +73,4 @@ All other fields remain the same type and structure.
 - The migration is one-way: it converts from peewee to sqlmodel schema
 - After migration, the application code uses sqlmodel exclusively
 - The migration preserves all data integrity and relationships
+- Peewee is only required for running the migration script, not for normal application use
