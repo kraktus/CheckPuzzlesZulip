@@ -52,7 +52,7 @@ class Checker:
                     report.has_multiple_solutions = has_multi_sol
                     report.local_evaluation = eval_dump  # type: ignore
                 board.push_uci(move)
-            if board.is_checkmate() and not " mate " in puzzle.themes:
+            if board.is_checkmate() and puzzle.themes and " mate " not in puzzle.themes:
                 report.has_missing_mate_theme = True
 
         report.checked = True  # type: ignore

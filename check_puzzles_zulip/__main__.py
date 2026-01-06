@@ -55,7 +55,7 @@ def fetch_reports(db) -> None:
 
     client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
-    
+
     inserted_count = 0
     with get_session() as session:
         for report_dict in reports:
@@ -87,7 +87,7 @@ def mark_duplicate_reports(db, zulip: ZulipClient) -> None:
     with get_session() as session:
         statement = select(PuzzleReport)
         reports = list(session.exec(statement).all())
-    
+
     # do everything in python for now
     grouped_reports = groupby(
         sorted(reports, key=attrgetter("puzzle_id", "move")),
@@ -141,7 +141,7 @@ async def check_one_report(
             # no issue, it's a false positive
             if checked_report.issues == 0:
                 zulip.react(checked_report.zulip_message_id, "cross_mark")
-            
+
             # Save the report
             with get_session() as session:
                 session.add(checked_report)
@@ -155,11 +155,11 @@ async def async_check_reports(db, max_sf: int = 4) -> None:
 
     zulip = ZulipClient(ZULIPRC)
     mark_duplicate_reports(db, zulip)
-    
+
     with get_session() as session:
         statement = select(PuzzleReport).where(PuzzleReport.checked == False)
         unchecked_reports = list(session.exec(statement).all())
-    
+
     log.info(f"Checking {len(unchecked_reports)} reports")
     semaphore = asyncio.Semaphore(max_sf)
     tasks = [
@@ -177,13 +177,15 @@ def check_reports(db) -> None:
 def export_reports(db) -> None:
     """Export the puzzle ids with multiple solutions to a file"""
     with get_session() as session:
-        statement = select(PuzzleReport).where(
-            PuzzleReport.issues.bitwise_and(1) != 0  # has_multiple_solutions
-        ).where(
-            PuzzleReport.issues.bitwise_and(4) == 0  # not deleted
+        # Query for reports where bit 1 is set (has_multiple_solutions)
+        # and bit 4 is not set (not deleted)
+        statement = (
+            select(PuzzleReport)
+            .where((PuzzleReport.issues & 1) != 0)  # has_multiple_solutions
+            .where((PuzzleReport.issues & 4) == 0)  # not deleted
         )
         reports = list(session.exec(statement).all())
-    
+
     with open("multiple_solutions.txt", "w") as f:
         for report in reports:
             print(report.debug_str())
@@ -196,7 +198,7 @@ def reset_argparse(args) -> None:
     with get_session() as session:
         statement = select(PuzzleReport).where(PuzzleReport.checked == True)
         nb_reports = len(list(session.exec(statement).all()))
-    
+
     confirm = input(f"Are you sure you want to reset {nb_reports} reports? [y/N] ")
     if confirm.lower() == "y":
         if args.reports_checked:
@@ -219,13 +221,13 @@ def stats(db) -> None:
     reporter_limit = 20
     with get_session() as session:
         statement = (
-            select(PuzzleReport.reporter, func.count(PuzzleReport.reporter).label("count"))
+            select(PuzzleReport.reporter, func.count())
             .group_by(PuzzleReport.reporter)
-            .order_by(func.count(PuzzleReport.reporter).desc())
+            .order_by(func.count().desc())
             .limit(reporter_limit)
         )
         results = session.exec(statement).all()
-    
+
     print("-" * 10)
     print(f"Top {reporter_limit} reporters:")
     for reporter, count in results:
@@ -235,13 +237,13 @@ def stats(db) -> None:
     puzzle_limit = 20
     with get_session() as session:
         statement = (
-            select(PuzzleReport.puzzle_id, func.count(PuzzleReport.puzzle_id).label("count"))
+            select(PuzzleReport.puzzle_id, func.count())
             .group_by(PuzzleReport.puzzle_id)
-            .order_by(func.count(PuzzleReport.puzzle_id).desc())
+            .order_by(func.count().desc())
             .limit(puzzle_limit)
         )
         results = session.exec(statement).all()
-    
+
     print(f"Top {puzzle_limit} puzzles:")
     for puzzle_id, count in results:
         print(f"{puzzle_id}: {count}")
@@ -252,19 +254,19 @@ def check_delete_puzzles(db) -> None:
 
     # first, integrity check, make sure every report has an associated puzzle
     log.info("Integrity check: every report should have a puzzle")
-    
+
     with get_session() as session:
         # Get all puzzle IDs from reports
         statement = select(PuzzleReport.puzzle_id).distinct()
         report_puzzle_ids = set(session.exec(statement).all())
-        
+
         # Get all puzzle IDs from puzzles table
         statement = select(Puzzle._id)
         existing_puzzle_ids = set(session.exec(statement).all())
-        
+
         # Find missing puzzles
         missing_puzzle_ids = report_puzzle_ids - existing_puzzle_ids
-    
+
     log.info(f"Found {len(missing_puzzle_ids)} reports without puzzles")
     for puzzle_id in missing_puzzle_ids:
         puzzle = _fetch_puzzle(puzzle_id)
@@ -276,13 +278,13 @@ def check_delete_puzzles(db) -> None:
 
     # Only check puzzle reports with issues, to save on query time
     with get_session() as session:
-        statement = select(PuzzleReport).where(
-            PuzzleReport.issues != 0
-        ).where(
-            PuzzleReport.issues.bitwise_and(4) == 0  # not deleted
+        statement = (
+            select(PuzzleReport)
+            .where(PuzzleReport.issues != 0)
+            .where((PuzzleReport.issues & 4) == 0)  # not deleted
         )
         puzzles_reports_with_issues = list(session.exec(statement).all())
-    
+
     nb_deleted = 0
     for report in puzzles_reports_with_issues:
         if is_puzzle_deleted(report.puzzle_id):
@@ -293,11 +295,11 @@ def check_delete_puzzles(db) -> None:
                 session.commit()
         time.sleep(0.4)  # avoid too many requests
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
-    
+
     with get_session() as session:
-        statement = select(Puzzle).where(Puzzle.status.bitwise_and(1) != 0)  # is_deleted
+        statement = select(Puzzle).where((Puzzle.status & 1) != 0)  # is_deleted
         deleted_puzzles = list(session.exec(statement).all())
-    
+
     for puzzle in deleted_puzzles:
         log.info(f"Marking puzzle {puzzle._id} as deleted")
         puzzle.is_deleted = True
