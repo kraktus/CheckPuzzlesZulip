@@ -34,11 +34,11 @@ from peewee import (
 
 # Import sqlmodel for writing new database
 import sys
+from sqlmodel import Session
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from check_puzzles_zulip.models import (
     setup_db as setup_sqlmodel_db,
-    get_session,
     PuzzleReport as SQLModelPuzzleReport,
     Puzzle as SQLModelPuzzle,
 )
@@ -119,13 +119,13 @@ def migrate_database(old_db_path: str) -> None:
     # Create new database with sqlmodel
     new_db_path = old_db_path.with_suffix(".new.db")
     print(f"Creating new database: {new_db_path}")
-    setup_sqlmodel_db(str(new_db_path))
+    new_engine = setup_sqlmodel_db(str(new_db_path))
 
     # Migrate data using sqlmodel
     print("Migrating puzzle reports...")
     from datetime import datetime
 
-    with get_session() as session:
+    with Session(new_engine) as session:
         for old_report in old_reports:
             # Convert bitfield issues to datetime fields
             has_multiple_solutions = (
@@ -156,7 +156,7 @@ def migrate_database(old_db_path: str) -> None:
         session.commit()
 
     print("Migrating puzzles...")
-    with get_session() as session:
+    with Session(new_engine) as session:
         for old_puzzle in old_puzzles:
             new_puzzle = SQLModelPuzzle(
                 id=old_puzzle._id,

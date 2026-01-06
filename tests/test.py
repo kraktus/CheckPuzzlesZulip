@@ -279,14 +279,14 @@ class Test(unittest.TestCase):
 class TestChecker(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.db = setup_db(":memory:")
-        transport, engine = await popen_uci(STOCKFISH)
+        self.db_engine = setup_db(":memory:")
+        transport, chess_engine = await popen_uci(STOCKFISH)
         self.transport = transport
-        self.engine = engine
-        self.checker = Checker(engine)
+        self.chess_engine = chess_engine
+        self.checker = Checker(chess_engine, self.db_engine)
 
     async def asyncTearDown(self):
-        await self.engine.quit()
+        await self.chess_engine.quit()
         # No need to close database with sqlmodel - connections are handled by sessions
 
     async def test_checker_multi_solution(self):

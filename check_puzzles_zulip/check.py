@@ -7,6 +7,7 @@ import chess
 import chess.engine
 
 from typing import Tuple, List
+from sqlmodel import Engine
 
 from chess.engine import Score, Limit, UciProtocol
 
@@ -19,8 +20,9 @@ log = setup_logger(__file__)
 
 class Checker:
 
-    def __init__(self, engine: UciProtocol):
-        self.engine = engine
+    def __init__(self, chess_engine: UciProtocol, db_engine: Engine):
+        self.chess_engine = chess_engine
+        self.db_engine = db_engine
 
     async def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = self._get_puzzle(str(report.puzzle_id))
@@ -79,14 +81,14 @@ class Checker:
 
     async def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
-        infos = await self.engine.analyse(
+        infos = await self.chess_engine.analyse(
             board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
         )
         return infos
 
     # only defined to allow for override in tests
     def _get_puzzle(self, puzzle_id: str) -> Puzzle:
-        return get_puzzle(puzzle_id)
+        return get_puzzle(puzzle_id, self.db_engine)
 
 
 def default_converter(obj):

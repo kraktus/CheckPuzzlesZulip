@@ -2,7 +2,7 @@ import chess
 
 from datetime import datetime
 from typing import Optional, TypedDict
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlmodel import SQLModel, Field, create_engine, Session, select, Engine
 
 
 # TypedDict for bulk insert operations
@@ -97,19 +97,8 @@ class Puzzle(SQLModel, table=True):
         return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK  # type: ignore
 
 
-# Global engine - will be initialized by setup_db
-engine = None
-
-
-def setup_db(name: str):
-    global engine
+def setup_db(name: str) -> Engine:
+    """Create and initialize database engine"""
     engine = create_engine(f"sqlite:///{name}")
     SQLModel.metadata.create_all(engine)
     return engine
-
-
-def get_session() -> Session:
-    """Get a new database session"""
-    if engine is None:
-        raise RuntimeError("Database not initialized. Call setup_db() first.")
-    return Session(engine)

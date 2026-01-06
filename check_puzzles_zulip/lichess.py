@@ -1,23 +1,23 @@
 import logging
 import requests
 
-from sqlmodel import select
+from sqlmodel import select, Engine, Session
 
-from .models import Puzzle, get_session
+from .models import Puzzle
 from .config import setup_logger
 
 log = setup_logger(__file__)
 
 
-def get_puzzle(puzzle_id: str) -> Puzzle:
-    with get_session() as session:
+def get_puzzle(puzzle_id: str, engine: Engine) -> Puzzle:
+    with Session(engine) as session:
         statement = select(Puzzle).where(Puzzle.id == puzzle_id)
         puzzle = session.exec(statement).first()
         if puzzle is not None:
             return puzzle
     puzzle = _fetch_puzzle(puzzle_id)
     log.debug(f"Creating puzzle {puzzle}")
-    with get_session() as session:
+    with Session(engine) as session:
         session.add(puzzle)
         session.commit()
         session.refresh(puzzle)

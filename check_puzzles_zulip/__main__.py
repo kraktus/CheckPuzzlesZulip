@@ -20,7 +20,7 @@ import time
 import chess
 import chess.engine
 
-from sqlmodel import select, func, or_
+from sqlmodel import select, func, or_, Engine, Session
 from argparse import RawTextHelpFormatter
 from collections import deque
 from dataclasses import dataclass
@@ -34,7 +34,7 @@ from typing import Optional, List, Union, Tuple, Dict, Callable, Any
 from .check import Checker
 from .config import setup_logger, ZULIPRC, STOCKFISH
 from .lichess import is_puzzle_deleted, _fetch_puzzle
-from .models import setup_db, PuzzleReport, Puzzle, get_session
+from .models import setup_db, PuzzleReport, Puzzle
 from .zulip import ZulipClient
 
 log = setup_logger(__file__)
@@ -52,13 +52,13 @@ def doc(dic: Dict[str, Callable[..., Any]]) -> str:
     return doc_string
 
 
-def fetch_reports(db) -> None:
+def fetch_reports(engine: Engine) -> None:
 
     client = ZulipClient(ZULIPRC)
     reports = client.get_puzzle_reports()
 
     inserted_count = 0
-    with get_session() as session:
+    with Session(engine) as session:
         for report_dict in reports:
             # Check if report already exists
             statement = select(PuzzleReport).where(
@@ -83,9 +83,9 @@ def fetch_reports(db) -> None:
     log.info(f"{inserted_count} new reports")
 
 
-def mark_duplicate_reports(db, zulip: ZulipClient) -> None:
+def mark_duplicate_reports(engine: Engine, zulip: ZulipClient) -> None:
     """Mark duplicate reports as checked"""
-    with get_session() as session:
+    with Session(engine) as session:
         statement = select(PuzzleReport)
         reports = list(session.exec(statement).all())
 
@@ -109,7 +109,7 @@ def mark_duplicate_reports(db, zulip: ZulipClient) -> None:
                 )
                 for zulip_id in unchecked_duplicates:
                     zulip.react(zulip_id, "repeat")
-                with get_session() as session:
+                with Session(engine) as session:
                     for zulip_id in unchecked_duplicates:
                         statement = select(PuzzleReport).where(
                             PuzzleReport.zulip_message_id == zulip_id
@@ -122,12 +122,15 @@ def mark_duplicate_reports(db, zulip: ZulipClient) -> None:
 
 
 async def check_one_report(
-    unchecked_report: PuzzleReport, zulip: ZulipClient, semaphore: asyncio.Semaphore
+    unchecked_report: PuzzleReport,
+    zulip: ZulipClient,
+    semaphore: asyncio.Semaphore,
+    db_engine: Engine,
 ) -> None:
     async with semaphore:
-        transport, engine = await chess.engine.popen_uci(STOCKFISH)
+        transport, chess_engine = await chess.engine.popen_uci(STOCKFISH)
         try:
-            checker = Checker(engine)
+            checker = Checker(chess_engine, db_engine)
             log.info(
                 f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}"
             )
@@ -144,40 +147,40 @@ async def check_one_report(
                 zulip.react(checked_report.zulip_message_id, "cross_mark")
 
             # Save the report
-            with get_session() as session:
+            with Session(db_engine) as session:
                 session.add(checked_report)
                 session.commit()
         finally:
-            await engine.quit()
+            await chess_engine.quit()
 
 
-async def async_check_reports(db, max_sf: int = 4) -> None:
+async def async_check_reports(engine: Engine, max_sf: int = 4) -> None:
     """Check the reports in the database"""
 
     zulip = ZulipClient(ZULIPRC)
-    mark_duplicate_reports(db, zulip)
+    mark_duplicate_reports(engine, zulip)
 
-    with get_session() as session:
+    with Session(engine) as session:
         statement = select(PuzzleReport).where(PuzzleReport.checked == False)
         unchecked_reports = list(session.exec(statement).all())
 
     log.info(f"Checking {len(unchecked_reports)} reports")
     semaphore = asyncio.Semaphore(max_sf)
     tasks = [
-        asyncio.create_task(check_one_report(report, zulip, semaphore))
+        asyncio.create_task(check_one_report(report, zulip, semaphore, engine))
         for report in unchecked_reports
     ]
     await asyncio.gather(*tasks)
     log.info("All reports checked")
 
 
-def check_reports(db) -> None:
-    asyncio.run(async_check_reports(db))
+def check_reports(engine: Engine) -> None:
+    asyncio.run(async_check_reports(engine))
 
 
-def export_reports(db) -> None:
+def export_reports(engine: Engine) -> None:
     """Export the puzzle ids with multiple solutions to a file"""
-    with get_session() as session:
+    with Session(engine) as session:
         # Query for reports with multiple solutions that are not deleted
         statement = (
             select(PuzzleReport)
@@ -193,16 +196,16 @@ def export_reports(db) -> None:
     log.info(f"Exported {len(reports)} reports to multiple_solutions.txt")
 
 
-def reset_argparse(args) -> None:
+def reset_argparse(args, engine: Engine) -> None:
     """Reset all reports to unchecked"""
-    with get_session() as session:
+    with Session(engine) as session:
         statement = select(PuzzleReport).where(PuzzleReport.checked == True)
         nb_reports = len(list(session.exec(statement).all()))
 
     confirm = input(f"Are you sure you want to reset {nb_reports} reports? [y/N] ")
     if confirm.lower() == "y":
         if args.reports_checked:
-            with get_session() as session:
+            with Session(engine) as session:
                 statement = select(PuzzleReport).where(PuzzleReport.checked == True)
                 reports = session.exec(statement).all()
                 for report in reports:
@@ -215,11 +218,11 @@ def reset_argparse(args) -> None:
             zu.unreact_all()
 
 
-def stats(db) -> None:
+def stats(engine: Engine) -> None:
     """Print statistics about the reports in the database"""
     # most reporters
     reporter_limit = 20
-    with get_session() as session:
+    with Session(engine) as session:
         statement = (
             select(PuzzleReport.reporter, func.count())
             .group_by(PuzzleReport.reporter)
@@ -235,7 +238,7 @@ def stats(db) -> None:
 
     # most reported puzzles
     puzzle_limit = 20
-    with get_session() as session:
+    with Session(engine) as session:
         statement = (
             select(PuzzleReport.puzzle_id, func.count())
             .group_by(PuzzleReport.puzzle_id)
@@ -249,13 +252,13 @@ def stats(db) -> None:
         print(f"{puzzle_id}: {count}")
 
 
-def check_delete_puzzles(db) -> None:
+def check_delete_puzzles(engine: Engine) -> None:
     """Fetch puzzles from lichess and mark them as deleted if they do not exist"""
 
     # first, integrity check, make sure every report has an associated puzzle
     log.info("Integrity check: every report should have a puzzle")
 
-    with get_session() as session:
+    with Session(engine) as session:
         # Get all puzzle IDs from reports
         statement = select(PuzzleReport.puzzle_id).distinct()
         report_puzzle_ids = set(session.exec(statement).all())
@@ -270,14 +273,14 @@ def check_delete_puzzles(db) -> None:
     log.info(f"Found {len(missing_puzzle_ids)} reports without puzzles")
     for puzzle_id in missing_puzzle_ids:
         puzzle = _fetch_puzzle(puzzle_id)
-        with get_session() as session:
+        with Session(engine) as session:
             session.add(puzzle)
             session.commit()
         time.sleep(0.4)  # avoid too many requests
     log.info("Integrity check done, all reports have a puzzle")
 
     # Only check puzzle reports with issues, to save on query time
-    with get_session() as session:
+    with Session(engine) as session:
         statement = (
             select(PuzzleReport)
             .where(PuzzleReport.issues != 0)
@@ -290,20 +293,20 @@ def check_delete_puzzles(db) -> None:
         if is_puzzle_deleted(report.puzzle_id):
             nb_deleted += 1
             report.is_deleted_from_lichess = datetime.datetime.now()
-            with get_session() as session:
+            with Session(engine) as session:
                 session.add(report)
                 session.commit()
         time.sleep(0.4)  # avoid too many requests
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
 
-    with get_session() as session:
+    with Session(engine) as session:
         statement = select(Puzzle).where((Puzzle.status & 1) != 0)  # is_deleted
         deleted_puzzles = list(session.exec(statement).all())
 
     for puzzle in deleted_puzzles:
         log.info(f"Marking puzzle {puzzle.id} as deleted")
         puzzle.is_deleted = True
-        with get_session() as session:
+        with Session(engine) as session:
             session.add(puzzle)
             session.commit()
 
@@ -311,7 +314,7 @@ def check_delete_puzzles(db) -> None:
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
     # Sublime does not show *.db in sidebars
-    db = setup_db("puzzle_reports.db")
+    engine = setup_db("puzzle_reports.db")
     full_path = os.path.abspath("puzzle_reports.db")
     log.info(f"Using database {full_path}")
     parser = argparse.ArgumentParser()
@@ -342,7 +345,7 @@ def main() -> None:
     }
 
     run_parser.add_argument("command", choices=commands.keys(), help=doc(commands))
-    run_parser.set_defaults(func=lambda args: commands[args.command](db))
+    run_parser.set_defaults(func=lambda args: commands[args.command](engine))
 
     go_parser = subparser.add_parser(
         "go", help="Run sequentially combination of simple commands"
@@ -354,7 +357,7 @@ def main() -> None:
         help="Commands to run sequentially\n" + doc(commands),
     )
     go_parser.set_defaults(
-        func=lambda args: [commands[cmd](db) for cmd in args.commands]
+        func=lambda args: [commands[cmd](engine) for cmd in args.commands]
     )
 
     # reset parser
@@ -365,7 +368,7 @@ def main() -> None:
     reset_parser.add_argument("--reports-checked", action="store_true")
     # zulip reactions
     reset_parser.add_argument("--reactions", action="store_true")
-    reset_parser.set_defaults(func=reset_argparse)
+    reset_parser.set_defaults(func=lambda args: reset_argparse(args, engine))
 
     args = parser.parse_args()
     # log.handler_2.setLevel(logging.DEBUG if args.verbose else logging.INFO)
