@@ -11,7 +11,7 @@ log = setup_logger(__file__)
 
 def get_puzzle(puzzle_id: str) -> Puzzle:
     with get_session() as session:
-        statement = select(Puzzle).where(Puzzle._id == puzzle_id)
+        statement = select(Puzzle).where(Puzzle.id == puzzle_id)
         puzzle = session.exec(statement).first()
         if puzzle is not None:
             return puzzle
@@ -28,12 +28,12 @@ def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     """Fetch a puzzle from lichess"""
     resp = _internal_fetch_puzzle(puzzle_id)
     if resp.status_code == 404:
-        puzzle = Puzzle(_id=puzzle_id)
+        puzzle = Puzzle(id=puzzle_id)
         puzzle.is_deleted = True
         return puzzle
     json = resp.json()
     return Puzzle(
-        _id=json["puzzle"]["id"],
+        id=json["puzzle"]["id"],
         initialPly=json["puzzle"]["initialPly"],
         solution=" ".join(json["puzzle"]["solution"]),
         themes=" ".join(json["puzzle"]["themes"]),

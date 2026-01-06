@@ -79,7 +79,7 @@ class PuzzleReport(SQLModel, table=True):
 class Puzzle(SQLModel, table=True):
     __tablename__ = "puzzle"  # type: ignore
 
-    _id: str = Field(primary_key=True, max_length=5)
+    id: str = Field(primary_key=True, max_length=5, sa_column_kwargs={"name": "_id"})
     initialPly: Optional[int] = None
     solution: Optional[str] = None
     themes: Optional[str] = None  # themes, separated by spaces

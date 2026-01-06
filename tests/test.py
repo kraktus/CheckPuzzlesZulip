@@ -23,7 +23,7 @@ import datetime
 
 def override_get_puzzle(p: Puzzle):
     def mock_get_puzzle(puzzle_id):
-        if puzzle_id == p._id:
+        if puzzle_id == p.id:
             return p
         else:
             raise ValueError("TEST: inccorect puzzle fetched")
@@ -191,7 +191,7 @@ class Test(unittest.TestCase):
     @unittest.skip("no need for request each time, todo mock")
     def test_fetch_puzzle(self):
         puzzle = _fetch_puzzle("3z2st")
-        self.assertEqual(puzzle._id, "3z2st")
+        self.assertEqual(puzzle.id, "3z2st")
         self.assertEqual(puzzle.initialPly, 11)
         self.assertEqual(puzzle.solution, "d5c6 e4c3 c6b7 c3b5 c1d2")
         self.assertEqual(
@@ -293,17 +293,17 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
         report = PuzzleReport(
             reporter="xxx",
-            puzzle_id="XGeME",
+            puzzleid="XGeME",
             report_version=6,
             sf_version="SF 17 · 79MB",
             move=44,
             details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
             local_evaluation="",
-            zulip_message_id="1",
+            zulip_messageid="1",
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
-            _id="XGeME",
+            id="XGeME",
             initialPly=87,
             solution="f6g6 a7a4",
             themes="crushing defensiveMove endgame oneMove rookEndgame",
@@ -319,16 +319,16 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         # reported NtcHj because (v5) after move 50. Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3
         report = PuzzleReport(
             reporter="xxx",
-            puzzle_id="NtcHj",
+            puzzleid="NtcHj",
             report_version=5,
             sf_version="",
             move=50,
             details="Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3",
             local_evaluation="",
-            zulip_message_id="1",
+            zulip_messageid="1",
         )
         mock_puzzle = Puzzle(
-            _id="NtcHj",
+            id="NtcHj",
             initialPly=98,
             solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3",
             themes="crushing endgame long master rookEndgame",
@@ -344,16 +344,16 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         #   reported 5YpsY because (v5) after move 31. e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51
         report = PuzzleReport(
             reporter="xxx",
-            puzzle_id="5YpsY",
+            puzzleid="5YpsY",
             report_version=5,
             sf_version="",
             move=31,
             details="e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51",
             local_evaluation="",
-            zulip_message_id="1",
+            zulip_messageid="1",
         )
         puzzle_mock = Puzzle(
-            _id="5YpsY",
+            id="5YpsY",
             initialPly=61,
             solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8",
             themes="clearance crushing endgame master pin veryLong",
@@ -369,17 +369,17 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
         report = PuzzleReport(
             reporter="fff",
-            puzzle_id="2F0QF",
+            puzzleid="2F0QF",
             report_version=6,
             sf_version="SF 16 · 7MB",
             move=38,
             details="Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1",
             local_evaluation="",
-            zulip_message_id="1",
+            zulip_messageid="1",
         )
 
         puzzle_mock = Puzzle(
-            _id="2F0QF",
+            id="2F0QF",
             initialPly=68,
             solution="c8c7 a3f3 g2h2 f3f2 h2h3 f2f1 h3h4 f1h1",
             themes="endgame",

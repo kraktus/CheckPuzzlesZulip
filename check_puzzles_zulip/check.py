@@ -29,7 +29,7 @@ class Checker:
         else:
             board = chess.Board()
             moves = str(puzzle.game_pgn).split()
-            log.info(f"Checking puzzle {puzzle._id}")
+            log.info(f"Checking puzzle {puzzle.id}")
             for move in moves:
                 board.push_san(move)
             for move in str(puzzle.solution).split():

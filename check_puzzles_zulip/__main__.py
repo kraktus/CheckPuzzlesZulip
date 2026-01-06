@@ -261,7 +261,7 @@ def check_delete_puzzles(db) -> None:
         report_puzzle_ids = set(session.exec(statement).all())
 
         # Get all puzzle IDs from puzzles table
-        statement = select(Puzzle._id)
+        statement = select(Puzzle.id)
         existing_puzzle_ids = set(session.exec(statement).all())
 
         # Find missing puzzles
@@ -301,7 +301,7 @@ def check_delete_puzzles(db) -> None:
         deleted_puzzles = list(session.exec(statement).all())
 
     for puzzle in deleted_puzzles:
-        log.info(f"Marking puzzle {puzzle._id} as deleted")
+        log.info(f"Marking puzzle {puzzle.id} as deleted")
         puzzle.is_deleted = True
         with get_session() as session:
             session.add(puzzle)
