@@ -287,7 +287,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.engine.quit()
-        self.db.close()
+        # No need to close database with sqlmodel - connections are handled by sessions
 
     async def test_checker_multi_solution(self):
         # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
@@ -298,9 +298,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="SF 17 · 79MB",
             move=44,
             details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
@@ -325,9 +324,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="",
             move=50,
             details="Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
         )
         mock_puzzle = Puzzle(
             _id="NtcHj",
@@ -351,6 +349,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="",
             move=31,
             details="e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51",
+            local_evaluation="",
+            zulip_message_id="1",
         )
         puzzle_mock = Puzzle(
             _id="5YpsY",
@@ -374,9 +374,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="SF 16 · 7MB",
             move=38,
             details="Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
         )
 
         puzzle_mock = Puzzle(
