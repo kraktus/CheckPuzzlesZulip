@@ -57,10 +57,12 @@ uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py puzzle_
 **PuzzleReport table:**
 - `zulip_message_id`: Now TEXT (was INTEGER) - serves as primary key
 - `checked`: Now stored as INTEGER (0 or 1)
-- `issues`: Bitfield stored as INTEGER
-  - Bit 1: has_multiple_solutions
-  - Bit 2: has_missing_mate_theme
-  - Bit 4: is_deleted_from_lichess
+- Issue tracking changed from bitfield to datetime columns:
+  - `has_multiple_solutions`: DATETIME | NULL (was bit 1 in issues bitfield)
+  - `has_missing_mate_theme`: DATETIME | NULL (was bit 2 in issues bitfield)
+  - `is_deleted_from_lichess`: DATETIME | NULL (was bit 4 in issues bitfield)
+  - Values are set to current timestamp when issue is detected, NULL when not detected
+  - Helper methods: `is_multiple_solutions_detected()`, `is_missing_mate_theme_detected()`, `is_deleted_detected()`
 
 **Puzzle table:**
 - `status`: Bitfield stored as INTEGER
@@ -73,4 +75,5 @@ All other fields remain the same type and structure.
 - The migration is one-way: it converts from peewee to sqlmodel schema
 - After migration, the application code uses sqlmodel exclusively
 - The migration preserves all data integrity and relationships
+- Issue timestamps are set to migration time for all existing issues
 - Peewee is only required for running the migration script, not for normal application use

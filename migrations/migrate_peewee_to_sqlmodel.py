@@ -123,8 +123,21 @@ def migrate_database(old_db_path: str) -> None:
 
     # Migrate data using sqlmodel
     print("Migrating puzzle reports...")
+    from datetime import datetime
+
     with get_session() as session:
         for old_report in old_reports:
+            # Convert bitfield issues to datetime fields
+            has_multiple_solutions = (
+                datetime.now() if old_report.has_multiple_solutions else None
+            )
+            has_missing_mate_theme = (
+                datetime.now() if old_report.has_missing_mate_theme else None
+            )
+            is_deleted_from_lichess = (
+                datetime.now() if old_report.is_deleted_from_lichess else None
+            )
+
             new_report = SQLModelPuzzleReport(
                 zulip_message_id=str(old_report.zulip_message_id),
                 reporter=old_report.reporter,
@@ -135,7 +148,9 @@ def migrate_database(old_db_path: str) -> None:
                 details=old_report.details,
                 checked=old_report.checked,
                 local_evaluation=old_report.local_evaluation or "",
-                issues=old_report.issues,
+                has_multiple_solutions=has_multiple_solutions,
+                has_missing_mate_theme=has_missing_mate_theme,
+                is_deleted_from_lichess=is_deleted_from_lichess,
             )
             session.add(new_report)
         session.commit()

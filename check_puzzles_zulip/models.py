@@ -1,5 +1,6 @@
 import chess
 
+from datetime import datetime
 from typing import Optional, TypedDict
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 
@@ -36,41 +37,34 @@ class PuzzleReport(SQLModel, table=True):
     # if empty, has not been analyzed
     local_evaluation: str = ""
 
-    # Bitfield flags stored as integer
-    issues: int = 0
+    # Issue tracking - datetime when each issue was detected (None if not detected)
+    has_multiple_solutions: Optional[datetime] = None
+    has_missing_mate_theme: Optional[datetime] = None
+    is_deleted_from_lichess: Optional[datetime] = None
+
+    def is_multiple_solutions_detected(self) -> bool:
+        """Check if multiple solutions issue is set"""
+        return self.has_multiple_solutions is not None
+
+    def is_missing_mate_theme_detected(self) -> bool:
+        """Check if missing mate theme issue is set"""
+        return self.has_missing_mate_theme is not None
+
+    def is_deleted_detected(self) -> bool:
+        """Check if deleted from lichess issue is set"""
+        return self.is_deleted_from_lichess is not None
 
     @property
-    def has_multiple_solutions(self) -> bool:
-        return bool(self.issues & 1)
-
-    @has_multiple_solutions.setter
-    def has_multiple_solutions(self, value: bool) -> None:
-        if value:
-            self.issues |= 1
-        else:
-            self.issues &= ~1
-
-    @property
-    def has_missing_mate_theme(self) -> bool:
-        return bool(self.issues & 2)
-
-    @has_missing_mate_theme.setter
-    def has_missing_mate_theme(self, value: bool) -> None:
-        if value:
-            self.issues |= 2
-        else:
-            self.issues &= ~2
-
-    @property
-    def is_deleted_from_lichess(self) -> bool:
-        return bool(self.issues & 4)
-
-    @is_deleted_from_lichess.setter
-    def is_deleted_from_lichess(self, value: bool) -> None:
-        if value:
-            self.issues |= 4
-        else:
-            self.issues &= ~4
+    def issues(self) -> int:
+        """Compatibility property that returns bitfield representation"""
+        result = 0
+        if self.has_multiple_solutions is not None:
+            result |= 1
+        if self.has_missing_mate_theme is not None:
+            result |= 2
+        if self.is_deleted_from_lichess is not None:
+            result |= 4
+        return result
 
     def debug_str(self) -> str:
         return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"

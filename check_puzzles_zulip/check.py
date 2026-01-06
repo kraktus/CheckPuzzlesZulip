@@ -25,7 +25,7 @@ class Checker:
     async def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = self._get_puzzle(str(report.puzzle_id))
         if puzzle.is_deleted:
-            report.is_deleted_from_lichess = True
+            report.is_deleted_from_lichess = datetime.datetime.now()
         else:
             board = chess.Board()
             moves = str(puzzle.game_pgn).split()
@@ -49,11 +49,12 @@ class Checker:
                     [has_multi_sol, eval_dump] = (
                         await self.position_has_multiple_solutions(board)
                     )
-                    report.has_multiple_solutions = has_multi_sol
+                    if has_multi_sol:
+                        report.has_multiple_solutions = datetime.datetime.now()
                     report.local_evaluation = eval_dump  # type: ignore
                 board.push_uci(move)
             if board.is_checkmate() and puzzle.themes and " mate " not in puzzle.themes:
-                report.has_missing_mate_theme = True
+                report.has_missing_mate_theme = datetime.datetime.now()
 
         report.checked = True  # type: ignore
         return report

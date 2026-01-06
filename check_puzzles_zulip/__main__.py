@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime
 import json
 import logging
 import logging.handlers
@@ -134,9 +135,9 @@ async def check_one_report(
             log.debug(
                 f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.issues}"
             )
-            if checked_report.has_multiple_solutions:
+            if checked_report.is_multiple_solutions_detected():
                 zulip.react(checked_report.zulip_message_id, "check")
-            if checked_report.has_missing_mate_theme:
+            if checked_report.is_missing_mate_theme_detected():
                 zulip.react(checked_report.zulip_message_id, "price_tag")
             # no issue, it's a false positive
             if checked_report.issues == 0:
@@ -177,12 +178,11 @@ def check_reports(db) -> None:
 def export_reports(db) -> None:
     """Export the puzzle ids with multiple solutions to a file"""
     with get_session() as session:
-        # Query for reports where bit 1 is set (has_multiple_solutions)
-        # and bit 4 is not set (not deleted)
+        # Query for reports with multiple solutions that are not deleted
         statement = (
             select(PuzzleReport)
-            .where((PuzzleReport.issues & 1) != 0)  # has_multiple_solutions
-            .where((PuzzleReport.issues & 4) == 0)  # not deleted
+            .where(PuzzleReport.has_multiple_solutions.is_not(None))
+            .where(PuzzleReport.is_deleted_from_lichess.is_(None))
         )
         reports = list(session.exec(statement).all())
 
@@ -281,7 +281,7 @@ def check_delete_puzzles(db) -> None:
         statement = (
             select(PuzzleReport)
             .where(PuzzleReport.issues != 0)
-            .where((PuzzleReport.issues & 4) == 0)  # not deleted
+            .where(PuzzleReport.is_deleted_from_lichess.is_(None))  # not deleted
         )
         puzzles_reports_with_issues = list(session.exec(statement).all())
 
@@ -289,7 +289,7 @@ def check_delete_puzzles(db) -> None:
     for report in puzzles_reports_with_issues:
         if is_puzzle_deleted(report.puzzle_id):
             nb_deleted += 1
-            report.is_deleted_from_lichess = True
+            report.is_deleted_from_lichess = datetime.datetime.now()
             with get_session() as session:
                 session.add(report)
                 session.commit()

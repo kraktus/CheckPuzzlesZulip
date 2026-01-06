@@ -312,7 +312,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.is_multiple_solutions_detected())
         self.assertTrue(report2.checked)
 
     async def test_checker_multi_solution2(self):
@@ -337,7 +337,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(mock_puzzle)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.is_multiple_solutions_detected())
         self.assertTrue(report2.checked)
 
     async def test_checker_multi_solution3(self):
@@ -362,20 +362,20 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
+        self.assertTrue(report2.is_multiple_solutions_detected())
         self.assertTrue(report2.checked)
 
     async def test_checker_missing_mate_theme(self):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
         report = PuzzleReport(
             reporter="fff",
-            puzzleid="2F0QF",
+            puzzle_id="2F0QF",
             report_version=6,
             sf_version="SF 16 · 7MB",
             move=38,
             details="Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1",
             local_evaluation="",
-            zulip_messageid="1",
+            zulip_message_id="1",
         )
 
         puzzle_mock = Puzzle(
@@ -388,8 +388,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertFalse(report2.has_multiple_solutions)
-        self.assertTrue(report2.has_missing_mate_theme)
+        self.assertFalse(report2.is_multiple_solutions_detected())
+        self.assertTrue(report2.is_missing_mate_theme_detected())
         self.assertTrue(report2.checked)
 
 
