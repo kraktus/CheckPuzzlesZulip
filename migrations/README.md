@@ -66,8 +66,9 @@ uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py puzzle_
 
 **Puzzle table:**
 - Primary key column: `id` (was `_id` in peewee)
-- `status`: Bitfield stored as INTEGER
-  - Bit 1: is_deleted
+- `deleted_at`: DATETIME | NULL (was bit 1 in status bitfield)
+  - Value is set to current timestamp when puzzle is deleted, NULL when not deleted
+  - Helper method: `is_deleted()` returns bool
 
 All other fields remain the same type and structure.
 

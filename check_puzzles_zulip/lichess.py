@@ -28,8 +28,9 @@ def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     """Fetch a puzzle from lichess"""
     resp = _internal_fetch_puzzle(puzzle_id)
     if resp.status_code == 404:
-        puzzle = Puzzle(id=puzzle_id)
-        puzzle.is_deleted = True
+        from datetime import datetime
+
+        puzzle = Puzzle(id=puzzle_id, deleted_at=datetime.now())
         return puzzle
     json = resp.json()
     return Puzzle(

@@ -78,19 +78,12 @@ class Puzzle(SQLModel, table=True):
     themes: Optional[str] = None  # themes, separated by spaces
     game_pgn: Optional[str] = None  # moves, separated by spaces
 
-    # Bitfield flags stored as integer
-    status: int = 0
+    # Datetime when puzzle was deleted from lichess (None if not deleted)
+    deleted_at: Optional[datetime] = None
 
-    @property
     def is_deleted(self) -> bool:
-        return bool(self.status & 1)
-
-    @is_deleted.setter
-    def is_deleted(self, value: bool) -> None:
-        if value:
-            self.status |= 1
-        else:
-            self.status &= ~1
+        """Check if puzzle is deleted"""
+        return self.deleted_at is not None
 
     def color_to_win(self) -> chess.Color:
         return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK  # type: ignore

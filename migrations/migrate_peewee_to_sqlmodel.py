@@ -158,13 +158,16 @@ def migrate_database(old_db_path: str) -> None:
     print("Migrating puzzles...")
     with Session(new_engine) as session:
         for old_puzzle in old_puzzles:
+            # Convert status bitfield to deleted_at datetime
+            deleted_at = datetime.now() if old_puzzle.is_deleted else None
+
             new_puzzle = SQLModelPuzzle(
                 id=old_puzzle._id,
                 initialPly=old_puzzle.initialPly,
                 solution=old_puzzle.solution,
                 themes=old_puzzle.themes,
                 game_pgn=old_puzzle.game_pgn,
-                status=old_puzzle.status,
+                deleted_at=deleted_at,
             )
             session.add(new_puzzle)
         session.commit()

@@ -313,15 +313,16 @@ def check_delete_puzzles(engine: Engine) -> None:
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
 
     with Session(engine) as session:
-        statement = select(Puzzle).where((Puzzle.status & 1) != 0)  # is_deleted
+        statement = select(Puzzle).where(Puzzle.deleted_at.is_not(None))
         deleted_puzzles = list(session.exec(statement).all())
 
     for puzzle in deleted_puzzles:
         log.info(f"Marking puzzle {puzzle.id} as deleted")
-        puzzle.is_deleted = True
-        with Session(engine) as session:
-            session.add(puzzle)
-            session.commit()
+        if not puzzle.is_deleted():
+            puzzle.deleted_at = datetime.datetime.now()
+            with Session(engine) as session:
+                session.add(puzzle)
+                session.commit()
 
 
 def main() -> None:
