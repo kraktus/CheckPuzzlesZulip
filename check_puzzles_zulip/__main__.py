@@ -135,17 +135,9 @@ async def check_one_report(
                 f"Checking report {unchecked_report}, {unchecked_report.puzzle_id}"
             )
             checked_report = await checker.check_report(unchecked_report)
-            # Check which issues were detected
-            issues_found = []
-            if checked_report.is_multiple_solutions_detected():
-                issues_found.append("multiple_solutions")
-            if checked_report.is_missing_mate_theme_detected():
-                issues_found.append("missing_mate_theme")
-            if checked_report.is_deleted_detected():
-                issues_found.append("deleted_from_lichess")
 
             log.debug(
-                f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {issues_found}"
+                f"Issues of {unchecked_report}, training/{checked_report.puzzle_id}: {checked_report.get_issues()}"
             )
             if checked_report.is_multiple_solutions_detected():
                 zulip.react(checked_report.zulip_message_id, "check")

@@ -54,6 +54,17 @@ class PuzzleReport(SQLModel, table=True):
         """Check if deleted from lichess issue is set"""
         return self.is_deleted_from_lichess is not None
 
+    def get_issues(self) -> list[str]:
+        """Get list of detected issues"""
+        issues = []
+        if self.is_multiple_solutions_detected():
+            issues.append("multiple_solutions")
+        if self.is_missing_mate_theme_detected():
+            issues.append("missing_mate_theme")
+        if self.is_deleted_detected():
+            issues.append("deleted_from_lichess")
+        return issues
+
     def debug_str(self) -> str:
         return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
 
