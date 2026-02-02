@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import sys
 import zlib
 
 import chess
@@ -34,7 +35,7 @@ def override_get_puzzle(p: Puzzle):
 ANALYSE_SIGN = inspect.signature(UciProtocol.analyse)
 
 
-def get_checksum_args(*args, **kwargs) -> int:
+def get_checksum_args(*args, **kwargs) -> bytes:
     """
     Calculate a checksum for the given arguments.
     This is used to identify unique calls to the analyse method.
@@ -56,7 +57,7 @@ class CachedEngine(UciProtocol):
         self.__diskette_dir = Path("diskettes")
         self.__diskette_dir.mkdir(exist_ok=True)
 
-    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]:
+    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]: # type: ignore
         checksum_arg = get_checksum_args(self, *args, **kwargs)
         checksum = zlib.adler32(checksum_arg)
         self.__used_checksums.add(checksum)
@@ -397,10 +398,11 @@ if __name__ == "__main__":
     print("#" * 80)
     try:
         unittest.main()
-    except Exit as e:
+    except SystemExit as e:
         print(f"Exiting with code {e.code}")
         print(
             "In case of import failure, try `uv run -m unittest tests/test.py` instead"
         )
+        sys.exit(e.code)
 
     # asyncio.run(test())
