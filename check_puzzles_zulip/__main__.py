@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import datetime
 import json
 import logging
 import logging.handlers
@@ -25,7 +24,7 @@ from sqlalchemy.engine import Engine
 from argparse import RawTextHelpFormatter
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
@@ -37,6 +36,7 @@ from .config import setup_logger, ZULIPRC, STOCKFISH
 from .lichess import is_puzzle_deleted, _fetch_puzzle
 from .models import setup_db, PuzzleReport, Puzzle
 from .zulip import ZulipClient
+from .util import utc_now
 
 log = setup_logger(__file__)
 
@@ -106,7 +106,7 @@ def mark_duplicate_reports(engine: Engine, zulip: ZulipClient) -> None:
                         )
                         report = session.exec(statement).first()
                         if report:
-                            report.checked_at = datetime.now()
+                            report.checked_at = utc_now()
                             session.add(report)
                     session.commit()
 
@@ -134,13 +134,7 @@ async def check_one_report(
             if checked_report.is_missing_mate_theme_detected():
                 zulip.react(checked_report.zulip_message_id, "price_tag")
             # no issue, it's a false positive
-            if not any(
-                [
-                    checked_report.is_multiple_solutions_detected(),
-                    checked_report.is_missing_mate_theme_detected(),
-                    checked_report.is_deleted_detected(),
-                ]
-            ):
+            if len(checked_report.get_issues()) == 0:
                 zulip.react(checked_report.zulip_message_id, "cross_mark")
 
             # Save the report
@@ -181,8 +175,9 @@ def export_reports(engine: Engine) -> None:
         # Query for reports with multiple solutions that are not deleted
         statement = (
             select(PuzzleReport)
-            .where(col(PuzzleReport.has_multiple_solutions).is_not(None))
-            .where(col(PuzzleReport.is_deleted_from_lichess).is_(None))
+            .join(Puzzle, col(Puzzle.lichess_id) == col(PuzzleReport.puzzle_id))
+            .where(PuzzleReport.has_issues_cond())
+            .where(col(Puzzle.deleted_at).is_(None))
         )
         reports = list(session.exec(statement).all())
 
@@ -277,43 +272,41 @@ def check_delete_puzzles(engine: Engine) -> None:
     log.info("Integrity check done, all reports have a puzzle")
 
     # Only check puzzle reports with issues, to save on query time
+    # and puzzles checked more than 24hrs ago, to allow for interrupting
     with Session(engine) as session:
+        twenty_four_hours_ago = utc_now() - timedelta(hours=24)
+
         statement = (
-            select(PuzzleReport)
+            select(Puzzle)
+            .join(PuzzleReport, col(Puzzle.lichess_id) == col(PuzzleReport.puzzle_id))
             .where(
                 or_(
                     col(PuzzleReport.has_multiple_solutions).is_not(None),
                     col(PuzzleReport.has_missing_mate_theme).is_not(None),
-                    col(PuzzleReport.is_deleted_from_lichess).is_not(None),
                 )
             )
-            .where(col(PuzzleReport.is_deleted_from_lichess).is_(None))  # not deleted
+            .where(
+                or_(
+                    col(Puzzle.checked_at).is_(None),
+                    col(Puzzle.checked_at) < twenty_four_hours_ago,
+                    col(Puzzle.deleted_at).is_not(None)
+                )
+            )
         )
-        puzzles_reports_with_issues = list(session.exec(statement).all())
+        puzzles_with_issues = list(session.exec(statement).all())
 
     nb_deleted = 0
-    for report in puzzles_reports_with_issues:
-        if is_puzzle_deleted(report.puzzle_id):
+    for puzzle in puzzles_with_issues:
+        if is_puzzle_deleted(puzzle.lichess_id):
             nb_deleted += 1
-            report.is_deleted_from_lichess = datetime.now()
-            with Session(engine) as session:
-                session.add(report)
-                session.commit()
+            puzzle.deleted_at = utc_now()
+        puzzle.checked_at = utc_now()
+        with Session(engine) as session:
+            session.add(puzzle)
+            session.commit()
+
         time.sleep(0.4)  # avoid too many requests
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
-
-    with Session(engine) as session:
-        # TODO FIXME, why is this erroring on pyright?
-        statement = select(Puzzle).where(col(Puzzle.deleted_at).is_not(None))
-        deleted_puzzles = list(session.exec(statement).all())
-
-    for puzzle in deleted_puzzles:
-        log.info(f"Marking puzzle {puzzle.lichess_id} as deleted")
-        if not puzzle.is_deleted():
-            puzzle.deleted_at = datetime.now()
-            with Session(engine) as session:
-                session.add(puzzle)
-                session.commit()
 
 
 def main() -> None:

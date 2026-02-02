@@ -14,13 +14,14 @@ from chess.engine import Score, Limit, UciProtocol
 from .lichess import get_puzzle
 from .models import PuzzleReport, Puzzle
 from .config import STOCKFISH, setup_logger
+from .util import utc_now
 
 log = setup_logger(__file__)
 
 
 class Checker:
 
-    def __init__(self, chess_engine: UciProtocol, db_engine: Engine, dt_now: Callable[[], dt.datetime] = dt.datetime.now):
+    def __init__(self, chess_engine: UciProtocol, db_engine: Engine, dt_now: Callable[[], dt.datetime] = utc_now):
         """dt_now is only defined to allow for override in tests"""
         self.chess_engine = chess_engine
         self.db_engine = db_engine

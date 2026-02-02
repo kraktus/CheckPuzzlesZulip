@@ -2,7 +2,7 @@ import chess
 
 from datetime import datetime
 from typing import Optional, TypedDict
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlmodel import SQLModel, Field, create_engine, Session, select, or_, col
 from sqlalchemy.engine import Engine
 
 
@@ -33,7 +33,6 @@ class PuzzleReport(SQLModel, table=True):
     # Issue tracking - datetime when each issue was detected (None if not detected)
     has_multiple_solutions: Optional[datetime] = None
     has_missing_mate_theme: Optional[datetime] = None
-    is_deleted_from_lichess: Optional[datetime] = None
 
     def is_multiple_solutions_detected(self) -> bool:
         """Check if multiple solutions issue is set"""
@@ -47,10 +46,6 @@ class PuzzleReport(SQLModel, table=True):
         """Check if missing mate theme issue is set"""
         return self.has_missing_mate_theme is not None
 
-    def is_deleted_detected(self) -> bool:
-        """Check if deleted from lichess issue is set"""
-        return self.is_deleted_from_lichess is not None
-
     def get_issues(self) -> list[str]:
         """Get list of detected issues"""
         issues = []
@@ -58,12 +53,18 @@ class PuzzleReport(SQLModel, table=True):
             issues.append("multiple_solutions")
         if self.is_missing_mate_theme_detected():
             issues.append("missing_mate_theme")
-        if self.is_deleted_detected():
-            issues.append("deleted_from_lichess")
         return issues
 
+    @classmethod
+    def has_issues_cond(cls):
+        """SQLAlchemy condition to check if any issue is detected"""
+        return or_(
+            col(cls.has_multiple_solutions).is_not(None),
+            col(cls.has_missing_mate_theme).is_not(None),
+        )
+
     def debug_str(self) -> str:
-        return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
+        return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}"
 
 
 class Puzzle(SQLModel, table=True):
