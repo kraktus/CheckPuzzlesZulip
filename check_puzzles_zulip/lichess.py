@@ -1,19 +1,27 @@
 import logging
 import requests
 
+from sqlmodel import select, Session
+from sqlalchemy.engine import Engine
+
 from .models import Puzzle
 from .config import setup_logger
 
 log = setup_logger(__file__)
 
 
-def get_puzzle(puzzle_id: str) -> Puzzle:
-    puzzle = Puzzle.get_or_none(Puzzle._id == puzzle_id)  # type: ignore
-    if puzzle is not None:
-        return puzzle
+def get_puzzle(puzzle_id: str, engine: Engine) -> Puzzle:
+    with Session(engine) as session:
+        statement = select(Puzzle).where(Puzzle.lichess_id == puzzle_id)
+        puzzle = session.exec(statement).first()
+        if puzzle is not None:
+            return puzzle
     puzzle = _fetch_puzzle(puzzle_id)
     log.debug(f"Creating puzzle {puzzle}")
-    puzzle.save(force_insert=True)
+    with Session(engine) as session:
+        session.add(puzzle)
+        session.commit()
+        session.refresh(puzzle)
     return puzzle
 
 
@@ -21,12 +29,13 @@ def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     """Fetch a puzzle from lichess"""
     resp = _internal_fetch_puzzle(puzzle_id)
     if resp.status_code == 404:
-        puzzle = Puzzle(_id=puzzle_id)
-        puzzle.is_deleted = True
+        from datetime import datetime
+
+        puzzle = Puzzle(lichess_id=puzzle_id, deleted_at=datetime.now())
         return puzzle
     json = resp.json()
     return Puzzle(
-        _id=json["puzzle"]["id"],
+        lichess_id=json["puzzle"]["id"],
         initialPly=json["puzzle"]["initialPly"],
         solution=" ".join(json["puzzle"]["solution"]),
         themes=" ".join(json["puzzle"]["themes"]),

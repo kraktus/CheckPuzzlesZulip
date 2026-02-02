@@ -16,3 +16,4 @@ zuliprc-prod
 *.log.*
 *.db
 multiple_solutions.txt
+.env

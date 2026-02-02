@@ -1,126 +1,95 @@
 import chess
 
-from typing import TypedDict
-
-from peewee import (
-    Model,
-    FixedCharField,
-    CompositeKey,
-    CharField,
-    IntegerField,
-    TextField,
-    BooleanField,
-    BitField,
-    AutoField,
-    SqliteDatabase,
-)
+from datetime import datetime
+from typing import Optional, TypedDict
+from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlalchemy.engine import Engine
 
 
-db = SqliteDatabase(None)
+from .config import STOCKFISH, setup_logger
+
+log = setup_logger(__file__)
 
 
-class BaseModel(Model):
-    class Meta:
-        database = db
+class PuzzleReport(SQLModel, table=True):
+    __tablename__ = "puzzlereport"  # type: ignore
 
-
-# needed to allow to use insert_many in db...
-class PuzzleReportDict(TypedDict):
+    zulip_message_id: str = Field(primary_key=True)
     reporter: str
-    puzzle_id: str
+    puzzle_id: str = Field(max_length=5)
     report_version: int
-    sf_version: str
-    zulip_message_id: int
-    move: int
-    details: str
-    # Those should not be set otherwise than ""
-    local_evaluation: str
-    issues: str
-
-
-class PuzzleReport(BaseModel):
-    zulip_message_id = CharField(primary_key=True)
-    reporter = CharField()
-    puzzle_id = FixedCharField(
-        5
-    )  # maybe multiple reports about the same puzzle but not for the same move
-    report_version = IntegerField()
-    # not present before v5
-    sf_version = CharField()
-    move = IntegerField()  # move, not plies, starting from 1
-    # for future compatibility and debugging
-    details = TextField()
+    sf_version: str = ""
+    move: int  # move, not plies, starting from 1
+    details: str  # for future compatibility and debugging
 
     # if the report has been checked
     # not necessarily equal to `local_evaluation == ""`
     # in case the report is a duplicate, or deleted
-    checked = BooleanField(default=False)
+    checked_at: Optional[datetime] = None
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
-    local_evaluation = TextField()
+    local_evaluation: str = ""
 
-    issues = BitField()
-    has_multiple_solutions = issues.flag(1)
-    has_missing_mate_theme = issues.flag(2)
-    is_deleted_from_lichess = issues.flag(4)
+    # Issue tracking - datetime when each issue was detected (None if not detected)
+    has_multiple_solutions: Optional[datetime] = None
+    has_missing_mate_theme: Optional[datetime] = None
+    is_deleted_from_lichess: Optional[datetime] = None
+
+    def is_multiple_solutions_detected(self) -> bool:
+        """Check if multiple solutions issue is set"""
+        return self.has_multiple_solutions is not None
+
+    def is_checked(self) -> bool:
+        """Check if the report has been checked"""
+        return self.checked_at is not None
+
+    def is_missing_mate_theme_detected(self) -> bool:
+        """Check if missing mate theme issue is set"""
+        return self.has_missing_mate_theme is not None
+
+    def is_deleted_detected(self) -> bool:
+        """Check if deleted from lichess issue is set"""
+        return self.is_deleted_from_lichess is not None
+
+    def get_issues(self) -> list[str]:
+        """Get list of detected issues"""
+        issues = []
+        if self.is_multiple_solutions_detected():
+            issues.append("multiple_solutions")
+        if self.is_missing_mate_theme_detected():
+            issues.append("missing_mate_theme")
+        if self.is_deleted_detected():
+            issues.append("deleted_from_lichess")
+        return issues
 
     def debug_str(self) -> str:
         return f"PuzzleReport({self.zulip_message_id}, {self.reporter}, {self.puzzle_id}, {self.move}, is_deleted_from_lichess={self.is_deleted_from_lichess})"
 
 
-# taken from the lichess api
-# https://lichess.org/api/puzzle/{id}
-# {
-# "game": {
-# "clock": "3+0",
-# "id": "AHGPPS44",
-# "perf": {},
-# "pgn": "d4 d5 Bf4 Bf5 Nf3 e6 c4 Nf6 Nc3 Bd6 Bg3 Nbd7 e3 O-O c5 Bxg3 hxg3 h6 Bd3 Ne4 Qc2 Ndf6 Nd2 Nxc3 Bxf5 exf5 bxc3 Ne4 Nxe4 fxe4 Rb1 b6 Rh5 bxc5 Rb5 cxd4 cxd4 c6 Qxc6 Rc8 Qxd5 Qf6 Qxe4 Rc1+ Ke2 Qa6 Qd5 Rc2+ Kf3 g6 Rxh6 Qf6+ Ke4",
-# "players": [
-# {},
-# {}
-# ],
-# "rated": true
-# },
-# "puzzle": {
-# "id": "PSjmf",
-# "initialPly": 52,
-# "plays": 566,
-# "rating": 2705,
-# "solution": [
-# "g8g7",
-# "d5e5",
-# "f6e5"
-# ],
-# "themes": [
-# "endgame",
-# "master",
-# "short",
-# "masterVsMaster",
-# "crushing"
-# ]
-# }
-# }
-class Puzzle(BaseModel):
-    _id = FixedCharField(5, primary_key=True)
-    initialPly = IntegerField(null=True)
-    solution = CharField(null=True)
-    # themes, separated by spaces
-    themes = TextField(null=True)
-    # moves, separated by spaces
-    game_pgn = TextField(null=True)
-    status = BitField()
-    # not in the lichess anymore
-    is_deleted = status.flag(1)
+class Puzzle(SQLModel, table=True):
+    __tablename__ = "puzzle"  # type: ignore
+
+    lichess_id: str = Field(primary_key=True, max_length=5)
+    initialPly: Optional[int] = None
+    solution: Optional[str] = None
+    themes: Optional[str] = None  # themes, separated by spaces
+    game_pgn: Optional[str] = None  # moves, separated by spaces
+
+    # Datetime when puzzle was deleted from lichess (None if not deleted)
+    deleted_at: Optional[datetime] = None
+
+    def is_deleted(self) -> bool:
+        """Check if puzzle is deleted"""
+        return self.deleted_at is not None
 
     def color_to_win(self) -> chess.Color:
         return chess.WHITE if self.initialPly % 2 == 1 else chess.BLACK  # type: ignore
 
 
-def setup_db(name: str):
-    db.init(name)
-    db.connect()
-    db.create_tables([PuzzleReport, Puzzle])
-    # import time
-    # time.sleep(15)
-    return db
+def setup_db(name: str) -> Engine:
+    """Create and initialize database engine"""
+    engine = create_engine(f"sqlite:///{name}")
+    SQLModel.metadata.create_all(engine)
+    if engine.url.database:
+        log.info(f"Connected to database at {engine.url.database}")
+    return engine

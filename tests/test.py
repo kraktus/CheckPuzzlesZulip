@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import sys
 import zlib
 
 import chess
@@ -8,11 +9,11 @@ from pathlib import Path
 from typing import List, Union, Dict, Any, Callable, Tuple
 
 from chess import WHITE, BLACK, Move
-from chess.engine import Score, Cp, Mate, PovScore, InfoDict
+from chess.engine import Score, Cp, Mate, PovScore, InfoDict, UciProtocol
 
 from check_puzzles_zulip.config import STOCKFISH
 from check_puzzles_zulip.parser import parse_report_v5_onward
-from check_puzzles_zulip.models import PuzzleReport, PuzzleReportDict, Puzzle
+from check_puzzles_zulip.models import PuzzleReport, Puzzle
 from check_puzzles_zulip.lichess import _fetch_puzzle
 from check_puzzles_zulip.check import _similar_eval, Checker
 from check_puzzles_zulip.models import setup_db
@@ -23,18 +24,18 @@ import datetime
 
 def override_get_puzzle(p: Puzzle):
     def mock_get_puzzle(puzzle_id):
-        if puzzle_id == p._id:
+        if puzzle_id == p.lichess_id:
             return p
         else:
-            raise ValueError("TEST: inccorect puzzle fetched")
+            raise ValueError("TEST: incorrect puzzle fetched")
 
     return mock_get_puzzle
 
 
-ANALYSE_SIGN = inspect.signature(chess.engine.UciProtocol.analyse)
+ANALYSE_SIGN = inspect.signature(UciProtocol.analyse)
 
 
-def get_checksum_args(*args, **kwargs) -> int:
+def get_checksum_args(*args, **kwargs) -> bytes:
     """
     Calculate a checksum for the given arguments.
     This is used to identify unique calls to the analyse method.
@@ -47,7 +48,7 @@ def get_checksum_args(*args, **kwargs) -> int:
     return str(checksum_dict).encode("utf-8")
 
 
-class CachedEngine(chess.engine.UciProtocol):
+class CachedEngine(UciProtocol):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,7 +57,7 @@ class CachedEngine(chess.engine.UciProtocol):
         self.__diskette_dir = Path("diskettes")
         self.__diskette_dir.mkdir(exist_ok=True)
 
-    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]:
+    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]: # type: ignore
         checksum_arg = get_checksum_args(self, *args, **kwargs)
         checksum = zlib.adler32(checksum_arg)
         self.__used_checksums.add(checksum)
@@ -104,17 +105,16 @@ class Test(unittest.TestCase):
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
-        expected = {
-            "reporter": "booboo",
-            "puzzle_id": "12Qi4",
-            "report_version": 6,
-            "sf_version": "SF 16 · 7MB",
-            "move": 59,
-            "details": "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
-            "zulip_message_id": zulip_message_id,
-            "issues": "",
-            "local_evaluation": "",
-        }
+        expected = PuzzleReport(
+            reporter="booboo",
+            puzzle_id="12Qi4",
+            report_version=6,
+            sf_version="SF 16 · 7MB",
+            move=59,
+            details="Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
+            local_evaluation="",
+            zulip_message_id=str(zulip_message_id),
+        )
         self.assertEqual(puzzle_report, expected)
 
     def test_parse_v5_onward_on_v5(self):
@@ -122,17 +122,16 @@ class Test(unittest.TestCase):
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
-        expected = {
-            "reporter": "zzz",
-            "puzzle_id": "jTKok",
-            "report_version": 5,
-            "sf_version": "",
-            "move": 36,
-            "details": "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
-            "zulip_message_id": zulip_message_id,
-            "issues": "",
-            "local_evaluation": "",
-        }
+        expected = PuzzleReport(
+            reporter="zzz",
+            puzzle_id="jTKok",
+            report_version=5,
+            sf_version="",
+            move=36,
+            details="Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
+            local_evaluation="",
+            zulip_message_id=str(zulip_message_id),
+        )
         self.assertEqual(puzzle_report, expected)
 
     # {
@@ -191,7 +190,7 @@ class Test(unittest.TestCase):
     @unittest.skip("no need for request each time, todo mock")
     def test_fetch_puzzle(self):
         puzzle = _fetch_puzzle("3z2st")
-        self.assertEqual(puzzle._id, "3z2st")
+        self.assertEqual(puzzle.lichess_id, "3z2st")
         self.assertEqual(puzzle.initialPly, 11)
         self.assertEqual(puzzle.solution, "d5c6 e4c3 c6b7 c3b5 c1d2")
         self.assertEqual(
@@ -279,15 +278,16 @@ class Test(unittest.TestCase):
 class TestChecker(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.db = setup_db(":memory:")
-        transport, engine = await popen_uci(STOCKFISH)
+        self.db_engine = setup_db(":memory:")
+        transport, chess_engine = await popen_uci(STOCKFISH)
         self.transport = transport
-        self.engine = engine
-        self.checker = Checker(engine)
+        self.chess_engine = chess_engine
+        self.dt_now = lambda: datetime.datetime(2024, 1, 1)
+        self.checker = Checker(chess_engine, self.db_engine,dt_now=self.dt_now)
 
     async def asyncTearDown(self):
-        await self.engine.quit()
-        self.db.close()
+        await self.chess_engine.quit()
+        # No need to close database with sqlmodel - connections are handled by sessions
 
     async def test_checker_multi_solution(self):
         # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
@@ -298,13 +298,13 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="SF 17 · 79MB",
             move=44,
             details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
+            has_multiple_solutions=self.dt_now(),
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
-            _id="XGeME",
+            lichess_id="XGeME",
             initialPly=87,
             solution="f6g6 a7a4",
             themes="crushing defensiveMove endgame oneMove rookEndgame",
@@ -313,8 +313,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_multiple_solutions_detected())
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_multi_solution2(self):
         # reported NtcHj because (v5) after move 50. Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3
@@ -325,12 +325,11 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="",
             move=50,
             details="Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
         )
         mock_puzzle = Puzzle(
-            _id="NtcHj",
+            lichess_id="NtcHj",
             initialPly=98,
             solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3",
             themes="crushing endgame long master rookEndgame",
@@ -339,8 +338,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(mock_puzzle)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_multiple_solutions_detected())
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_multi_solution3(self):
         #   reported 5YpsY because (v5) after move 31. e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51
@@ -351,9 +350,11 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="",
             move=31,
             details="e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51",
+            local_evaluation="",
+            zulip_message_id="1",
         )
         puzzle_mock = Puzzle(
-            _id="5YpsY",
+            lichess_id="5YpsY",
             initialPly=61,
             solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8",
             themes="clearance crushing endgame master pin veryLong",
@@ -362,8 +363,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertTrue(report2.has_multiple_solutions)
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_multiple_solutions_detected())
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_missing_mate_theme(self):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
@@ -374,13 +375,12 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             sf_version="SF 16 · 7MB",
             move=38,
             details="Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1",
-            issues="",
             local_evaluation="",
-            zulip_message_id=1,
+            zulip_message_id="1",
         )
 
         puzzle_mock = Puzzle(
-            _id="2F0QF",
+            lichess_id="2F0QF",
             initialPly=68,
             solution="c8c7 a3f3 g2h2 f3f2 h2h3 f2f1 h3h4 f1h1",
             themes="endgame",
@@ -389,19 +389,20 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
-        self.assertFalse(report2.has_multiple_solutions)
-        self.assertTrue(report2.has_missing_mate_theme)
-        self.assertTrue(report2.checked)
+        self.assertFalse(report2.is_multiple_solutions_detected())
+        self.assertTrue(report2.is_missing_mate_theme_detected())
+        self.assertTrue(report2.is_checked())
 
 
 if __name__ == "__main__":
     print("#" * 80)
     try:
         unittest.main()
-    except Exit as e:
+    except SystemExit as e:
         print(f"Exiting with code {e.code}")
         print(
             "In case of import failure, try `uv run -m unittest tests/test.py` instead"
         )
+        sys.exit(e.code)
 
     # asyncio.run(test())

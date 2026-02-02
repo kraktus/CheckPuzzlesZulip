@@ -1,12 +1,13 @@
 import json
 import math
 import logging
-import datetime
+import datetime as dt
 
 import chess
 import chess.engine
 
-from typing import Tuple, List
+from typing import Tuple, List, Callable
+from sqlalchemy.engine import Engine
 
 from chess.engine import Score, Limit, UciProtocol
 
@@ -19,17 +20,20 @@ log = setup_logger(__file__)
 
 class Checker:
 
-    def __init__(self, engine: UciProtocol):
-        self.engine = engine
+    def __init__(self, chess_engine: UciProtocol, db_engine: Engine, dt_now: Callable[[], dt.datetime] = dt.datetime.now):
+        """dt_now is only defined to allow for override in tests"""
+        self.chess_engine = chess_engine
+        self.db_engine = db_engine
+        self.dt_now = dt_now
 
     async def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = self._get_puzzle(str(report.puzzle_id))
-        if puzzle.is_deleted:
-            report.is_deleted_from_lichess = True
+        if puzzle.is_deleted():
+            report.is_deleted_from_lichess = self.dt_now()
         else:
             board = chess.Board()
             moves = str(puzzle.game_pgn).split()
-            log.info(f"Checking puzzle {puzzle._id}")
+            log.info(f"Checking puzzle {puzzle.lichess_id}")
             for move in moves:
                 board.push_san(move)
             for move in str(puzzle.solution).split():
@@ -49,13 +53,14 @@ class Checker:
                     [has_multi_sol, eval_dump] = (
                         await self.position_has_multiple_solutions(board)
                     )
-                    report.has_multiple_solutions = has_multi_sol
-                    report.local_evaluation = eval_dump  # type: ignore
+                    if has_multi_sol:
+                        report.has_multiple_solutions = self.dt_now()
+                    report.local_evaluation = eval_dump
                 board.push_uci(move)
-            if board.is_checkmate() and not " mate " in puzzle.themes:
-                report.has_missing_mate_theme = True
+            if board.is_checkmate() and puzzle.themes and " mate " not in puzzle.themes:
+                report.has_missing_mate_theme = self.dt_now()
 
-        report.checked = True  # type: ignore
+        report.checked_at = self.dt_now()
         return report
 
     async def position_has_multiple_solutions(
@@ -78,18 +83,18 @@ class Checker:
 
     async def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
-        infos = await self.engine.analyse(
+        infos = await self.chess_engine.analyse(
             board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
         )
         return infos
 
     # only defined to allow for override in tests
     def _get_puzzle(self, puzzle_id: str) -> Puzzle:
-        return get_puzzle(puzzle_id)
+        return get_puzzle(puzzle_id, self.db_engine)
 
 
 def default_converter(obj):
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, dt.datetime):
         return obj.isoformat()
     elif hasattr(obj, "__dict__"):
         return obj.__dict__
