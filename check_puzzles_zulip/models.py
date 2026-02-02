@@ -77,6 +77,8 @@ class Puzzle(SQLModel, table=True):
 
     # Datetime when puzzle was deleted from lichess (None if not deleted)
     deleted_at: Optional[datetime] = None
+    # Datetime when puzzle was checked to be deleted from lichess (None if never tested)
+    checked_at: Optional[datetime] = None
 
     def is_deleted(self) -> bool:
         """Check if puzzle is deleted"""

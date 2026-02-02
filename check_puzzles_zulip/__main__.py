@@ -319,9 +319,7 @@ def check_delete_puzzles(engine: Engine) -> None:
 def main() -> None:
     # zulip lib is sync, so use sync as well for python-chess
     # Sublime does not show *.db in sidebars
-    engine = setup_db("puzzle_reports.db")
-    full_path = os.path.abspath("puzzle_reports.db")
-    log.info(f"Using database {full_path}")
+    engine = setup_db("puzzle_reports2.db")
     parser = argparse.ArgumentParser()
     # verbose
     parser.add_argument(
