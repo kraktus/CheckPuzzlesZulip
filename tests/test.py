@@ -104,17 +104,16 @@ class Test(unittest.TestCase):
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
-        expected = {
-            "reporter": "booboo",
-            "puzzle_id": "12Qi4",
-            "report_version": 6,
-            "sf_version": "SF 16 · 7MB",
-            "move": 59,
-            "details": "Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
-            "zulip_message_id": zulip_message_id,
-            "issues": "",
-            "local_evaluation": "",
-        }
+        expected = PuzzleReport(
+            reporter="booboo",
+            puzzle_id="12Qi4",
+            report_version=6,
+            sf_version="SF 16 · 7MB",
+            move=59,
+            details="Ke8, at depth 23, multiple solutions, pvs f5e5: 588, b3b4: 382, f5g6: 203, f5g4: 2, f5g5: 1",
+            local_evaluation="",
+            zulip_message_id=str(zulip_message_id),
+        )
         self.assertEqual(puzzle_report, expected)
 
     def test_parse_v5_onward_on_v5(self):
@@ -122,17 +121,16 @@ class Test(unittest.TestCase):
         zulip_message_id = 1
         puzzle_report = parse_report_v5_onward(txt, zulip_message_id)
         assert puzzle_report is not None
-        expected = {
-            "reporter": "zzz",
-            "puzzle_id": "jTKok",
-            "report_version": 5,
-            "sf_version": "",
-            "move": 36,
-            "details": "Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
-            "zulip_message_id": zulip_message_id,
-            "issues": "",
-            "local_evaluation": "",
-        }
+        expected = PuzzleReport(
+            reporter="zzz",
+            puzzle_id="jTKok",
+            report_version=5,
+            sf_version="",
+            move=36,
+            details="Bf8, at depth 31, multiple solutions, pvs c5c6: #14, e3f5: 828",
+            local_evaluation="",
+            zulip_message_id=str(zulip_message_id),
+        )
         self.assertEqual(puzzle_report, expected)
 
     # {
