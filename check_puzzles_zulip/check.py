@@ -1,12 +1,12 @@
 import json
 import math
 import logging
-import datetime
+import datetime as dt
 
 import chess
 import chess.engine
 
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 from sqlalchemy.engine import Engine
 
 from chess.engine import Score, Limit, UciProtocol
@@ -20,14 +20,16 @@ log = setup_logger(__file__)
 
 class Checker:
 
-    def __init__(self, chess_engine: UciProtocol, db_engine: Engine):
+    def __init__(self, chess_engine: UciProtocol, db_engine: Engine, dt_now: Callable[[], dt.datetime] = dt.datetime.now):
+        """dt_now is only defined to allow for override in tests"""
         self.chess_engine = chess_engine
         self.db_engine = db_engine
+        self.dt_now = dt_now
 
     async def check_report(self, report: PuzzleReport) -> PuzzleReport:
         puzzle = self._get_puzzle(str(report.puzzle_id))
-        if puzzle.is_deleted:
-            report.is_deleted_from_lichess = datetime.datetime.now()
+        if puzzle.is_deleted():
+            report.is_deleted_from_lichess = self.dt_now()
         else:
             board = chess.Board()
             moves = str(puzzle.game_pgn).split()
@@ -52,13 +54,13 @@ class Checker:
                         await self.position_has_multiple_solutions(board)
                     )
                     if has_multi_sol:
-                        report.has_multiple_solutions = datetime.datetime.now()
-                    report.local_evaluation = eval_dump  # type: ignore
+                        report.has_multiple_solutions = self.dt_now()
+                    report.local_evaluation = eval_dump
                 board.push_uci(move)
             if board.is_checkmate() and puzzle.themes and " mate " not in puzzle.themes:
-                report.has_missing_mate_theme = datetime.datetime.now()
+                report.has_missing_mate_theme = self.dt_now()
 
-        report.checked = True  # type: ignore
+        report.checked_at = self.dt_now()
         return report
 
     async def position_has_multiple_solutions(
@@ -92,7 +94,7 @@ class Checker:
 
 
 def default_converter(obj):
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, dt.datetime):
         return obj.isoformat()
     elif hasattr(obj, "__dict__"):
         return obj.__dict__

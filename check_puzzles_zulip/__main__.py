@@ -90,7 +90,7 @@ def mark_duplicate_reports(engine: Engine, zulip: ZulipClient) -> None:
             unchecked_duplicates = []
             # mark all but the first as checked
             for report in group_list[1:]:
-                if not report.checked:
+                if not report.is_checked():
                     log.debug(f"Marking report {report.zulip_message_id} as checked")
                     unchecked_duplicates.append(report.zulip_message_id)
             if unchecked_duplicates:
@@ -106,7 +106,7 @@ def mark_duplicate_reports(engine: Engine, zulip: ZulipClient) -> None:
                         )
                         report = session.exec(statement).first()
                         if report:
-                            report.checked = True
+                            report.checked_at = datetime.now()
                             session.add(report)
                     session.commit()
 
@@ -158,7 +158,7 @@ async def async_check_reports(engine: Engine, max_sf: int = 4) -> None:
     mark_duplicate_reports(engine, zulip)
 
     with Session(engine) as session:
-        statement = select(PuzzleReport).where(PuzzleReport.checked == False)
+        statement = select(PuzzleReport).where(col(PuzzleReport.checked_at).is_(None))
         unchecked_reports = list(session.exec(statement).all())
 
     log.info(f"Checking {len(unchecked_reports)} reports")
@@ -196,14 +196,14 @@ def export_reports(engine: Engine) -> None:
 def reset_argparse(args, engine: Engine) -> None:
     """Reset all reports to unchecked"""
     with Session(engine) as session:
-        statement = select(PuzzleReport).where(PuzzleReport.checked == True)
+        statement = select(PuzzleReport).where(col(PuzzleReport.checked_at).is_not(None))
         nb_reports = len(list(session.exec(statement).all()))
 
     confirm = input(f"Are you sure you want to reset {nb_reports} reports? [y/N] ")
     if confirm.lower() == "y":
         if args.reports_checked:
             with Session(engine) as session:
-                statement = select(PuzzleReport).where(PuzzleReport.checked == True)
+                statement = select(PuzzleReport).where(col(PuzzleReport.checked_at).is_not(None))
                 reports = session.exec(statement).all()
                 for report in reports:
                     report.checked = False

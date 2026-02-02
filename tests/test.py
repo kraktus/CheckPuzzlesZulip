@@ -281,7 +281,8 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         transport, chess_engine = await popen_uci(STOCKFISH)
         self.transport = transport
         self.chess_engine = chess_engine
-        self.checker = Checker(chess_engine, self.db_engine)
+        self.dt_now = lambda: datetime.datetime(2024, 1, 1)
+        self.checker = Checker(chess_engine, self.db_engine,dt_now=self.dt_now)
 
     async def asyncTearDown(self):
         await self.chess_engine.quit()
@@ -298,6 +299,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
             local_evaluation="",
             zulip_message_id="1",
+            has_multiple_solutions=self.dt_now(),
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
@@ -311,7 +313,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.is_multiple_solutions_detected())
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_multi_solution2(self):
         # reported NtcHj because (v5) after move 50. Re1, at depth 20, multiple solutions, pvs c2a2: -597, c2f2: -345, c2b2: -32, c2e2: -10, c2d2: -3
@@ -336,7 +338,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.is_multiple_solutions_detected())
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_multi_solution3(self):
         #   reported 5YpsY because (v5) after move 31. e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51
@@ -361,7 +363,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         report2 = await self.checker.check_report(report)
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.is_multiple_solutions_detected())
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_checked())
 
     async def test_checker_missing_mate_theme(self):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1
@@ -388,7 +390,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         assert isinstance(report2, PuzzleReport)
         self.assertFalse(report2.is_multiple_solutions_detected())
         self.assertTrue(report2.is_missing_mate_theme_detected())
-        self.assertTrue(report2.checked)
+        self.assertTrue(report2.is_checked())
 
 
 if __name__ == "__main__":

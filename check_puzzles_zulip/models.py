@@ -25,7 +25,7 @@ class PuzzleReport(SQLModel, table=True):
     # if the report has been checked
     # not necessarily equal to `local_evaluation == ""`
     # in case the report is a duplicate, or deleted
-    checked: bool = False
+    checked_at: Optional[datetime] = None
     # cache for local sf eval at the end, to inspect
     # if empty, has not been analyzed
     local_evaluation: str = ""
@@ -38,6 +38,10 @@ class PuzzleReport(SQLModel, table=True):
     def is_multiple_solutions_detected(self) -> bool:
         """Check if multiple solutions issue is set"""
         return self.has_multiple_solutions is not None
+
+    def is_checked(self) -> bool:
+        """Check if the report has been checked"""
+        return self.checked_at is not None
 
     def is_missing_mate_theme_detected(self) -> bool:
         """Check if missing mate theme issue is set"""
