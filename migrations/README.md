@@ -27,17 +27,11 @@ First, install the migration dependencies (includes peewee):
 uv sync --group migration
 ```
 
-#### Usage:
-
-```bash
-uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py <path_to_database>
-```
-
 #### Example:
 
 ```bash
 # Migrate the main database
-uv run --group migration python migrations/migrate_peewee_to_sqlmodel.py puzzle_reports.db
+uv run --group migration py3 migrations/migrate_peewee_to_sqlmodel.py puzzle_reports.db
 ```
 
 #### Safety:

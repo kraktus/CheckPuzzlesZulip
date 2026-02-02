@@ -123,7 +123,6 @@ def migrate_database(old_db_path: str) -> None:
 
     # Migrate data using sqlmodel
     print("Migrating puzzle reports...")
-    from datetime import datetime
 
     with Session(new_engine) as session:
         for old_report in old_reports:
@@ -137,6 +136,9 @@ def migrate_database(old_db_path: str) -> None:
             is_deleted_from_lichess = (
                 datetime.now() if old_report.is_deleted_from_lichess else None
             )
+            checked_at = (
+                datetime.now() if old_report.checked else None
+            )
 
             new_report = SQLModelPuzzleReport(
                 zulip_message_id=str(old_report.zulip_message_id),
@@ -146,7 +148,7 @@ def migrate_database(old_db_path: str) -> None:
                 sf_version=old_report.sf_version or "",
                 move=old_report.move,
                 details=old_report.details,
-                checked=old_report.checked,
+                checked_at=checked_at,
                 local_evaluation=old_report.local_evaluation or "",
                 has_multiple_solutions=has_multiple_solutions,
                 has_missing_mate_theme=has_missing_mate_theme,
@@ -174,7 +176,7 @@ def migrate_database(old_db_path: str) -> None:
 
     print(f"Migration complete!")
     print(f"Original database backed up to: {backup_path}")
-    print(f"New database: {old_db_path}")
+    print(f"New database: {new_db_path}")
 
 
 def main():
