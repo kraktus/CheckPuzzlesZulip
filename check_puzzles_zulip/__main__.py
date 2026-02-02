@@ -20,7 +20,8 @@ import time
 import chess
 import chess.engine
 
-from sqlmodel import select, func, or_, Engine, Session
+from sqlmodel import select, func, or_, Session, col
+from sqlalchemy.engine import Engine
 from argparse import RawTextHelpFormatter
 from collections import deque
 from dataclasses import dataclass
@@ -191,8 +192,8 @@ def export_reports(engine: Engine) -> None:
         # Query for reports with multiple solutions that are not deleted
         statement = (
             select(PuzzleReport)
-            .where(PuzzleReport.has_multiple_solutions.is_not(None))
-            .where(PuzzleReport.is_deleted_from_lichess.is_(None))
+            .where(col(PuzzleReport.has_multiple_solutions).is_not(None))
+            .where(col(PuzzleReport.is_deleted_from_lichess).is_(None))
         )
         reports = list(session.exec(statement).all())
 
@@ -292,12 +293,12 @@ def check_delete_puzzles(engine: Engine) -> None:
             select(PuzzleReport)
             .where(
                 or_(
-                    PuzzleReport.has_multiple_solutions.is_not(None),
-                    PuzzleReport.has_missing_mate_theme.is_not(None),
-                    PuzzleReport.is_deleted_from_lichess.is_not(None),
+                    col(PuzzleReport.has_multiple_solutions).is_not(None),
+                    col(PuzzleReport.has_missing_mate_theme).is_not(None),
+                    col(PuzzleReport.is_deleted_from_lichess).is_not(None),
                 )
             )
-            .where(PuzzleReport.is_deleted_from_lichess.is_(None))  # not deleted
+            .where(col(PuzzleReport.is_deleted_from_lichess).is_(None))  # not deleted
         )
         puzzles_reports_with_issues = list(session.exec(statement).all())
 
@@ -305,7 +306,7 @@ def check_delete_puzzles(engine: Engine) -> None:
     for report in puzzles_reports_with_issues:
         if is_puzzle_deleted(report.puzzle_id):
             nb_deleted += 1
-            report.is_deleted_from_lichess = datetime.datetime.now()
+            report.is_deleted_from_lichess = datetime.now()
             with Session(engine) as session:
                 session.add(report)
                 session.commit()
@@ -313,13 +314,14 @@ def check_delete_puzzles(engine: Engine) -> None:
     log.info(f"{nb_deleted} new puzzles deleted from lichess")
 
     with Session(engine) as session:
-        statement = select(Puzzle).where(Puzzle.deleted_at.is_not(None))
+        # TODO FIXME, why is this erroring on pyright?
+        statement = select(Puzzle).where(col(Puzzle.deleted_at).is_not(None))
         deleted_puzzles = list(session.exec(statement).all())
 
     for puzzle in deleted_puzzles:
         log.info(f"Marking puzzle {puzzle.id} as deleted")
         if not puzzle.is_deleted():
-            puzzle.deleted_at = datetime.datetime.now()
+            puzzle.deleted_at = datetime.now()
             with Session(engine) as session:
                 session.add(puzzle)
                 session.commit()

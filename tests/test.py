@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Union, Dict, Any, Callable, Tuple
 
 from chess import WHITE, BLACK, Move
-from chess.engine import Score, Cp, Mate, PovScore, InfoDict
+from chess.engine import Score, Cp, Mate, PovScore, InfoDict, UciProtocol
 
 from check_puzzles_zulip.config import STOCKFISH
 from check_puzzles_zulip.parser import parse_report_v5_onward
@@ -31,7 +31,7 @@ def override_get_puzzle(p: Puzzle):
     return mock_get_puzzle
 
 
-ANALYSE_SIGN = inspect.signature(chess.engine.UciProtocol.analyse)
+ANALYSE_SIGN = inspect.signature(UciProtocol.analyse)
 
 
 def get_checksum_args(*args, **kwargs) -> int:
@@ -47,7 +47,7 @@ def get_checksum_args(*args, **kwargs) -> int:
     return str(checksum_dict).encode("utf-8")
 
 
-class CachedEngine(chess.engine.UciProtocol):
+class CachedEngine(UciProtocol):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -293,13 +293,13 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         # reported XGeME because (v6, SF 17 · 79MB) after move 44. Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50
         report = PuzzleReport(
             reporter="xxx",
-            puzzleid="XGeME",
+            puzzle_id="XGeME",
             report_version=6,
             sf_version="SF 17 · 79MB",
             move=44,
             details="Kg6, at depth 21, multiple solutions, pvs a7a4: 507, b5b6: 434, a7a8: 58, a7a5: 51, a7a6: 50",
             local_evaluation="",
-            zulip_messageid="1",
+            zulip_message_id="1",
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
@@ -344,13 +344,13 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         #   reported 5YpsY because (v5) after move 31. e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51
         report = PuzzleReport(
             reporter="xxx",
-            puzzleid="5YpsY",
+            puzzle_id="5YpsY",
             report_version=5,
             sf_version="",
             move=31,
             details="e4, at depth 22, multiple solutions, pvs g2g3: 477, h8g8: 289, h8f8: 0, d8f8: 0, a2a3: -51",
             local_evaluation="",
-            zulip_messageid="1",
+            zulip_message_id="1",
         )
         puzzle_mock = Puzzle(
             id="5YpsY",
