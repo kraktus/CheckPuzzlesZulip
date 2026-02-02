@@ -1,7 +1,8 @@
 import logging
 import requests
 
-from sqlmodel import select, Engine, Session
+from sqlmodel import select, Session
+from sqlalchemy.engine import Engine
 
 from .models import Puzzle
 from .config import setup_logger
@@ -11,7 +12,7 @@ log = setup_logger(__file__)
 
 def get_puzzle(puzzle_id: str, engine: Engine) -> Puzzle:
     with Session(engine) as session:
-        statement = select(Puzzle).where(Puzzle.id == puzzle_id)
+        statement = select(Puzzle).where(Puzzle.lichess_id == puzzle_id)
         puzzle = session.exec(statement).first()
         if puzzle is not None:
             return puzzle
@@ -30,11 +31,11 @@ def _fetch_puzzle(puzzle_id: str) -> Puzzle:
     if resp.status_code == 404:
         from datetime import datetime
 
-        puzzle = Puzzle(id=puzzle_id, deleted_at=datetime.now())
+        puzzle = Puzzle(lichess_id=puzzle_id, deleted_at=datetime.now())
         return puzzle
     json = resp.json()
     return Puzzle(
-        id=json["puzzle"]["id"],
+        lichess_id=json["puzzle"]["id"],
         initialPly=json["puzzle"]["initialPly"],
         solution=" ".join(json["puzzle"]["solution"]),
         themes=" ".join(json["puzzle"]["themes"]),

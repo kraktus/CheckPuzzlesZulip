@@ -7,7 +7,7 @@ import chess
 import chess.engine
 
 from typing import Tuple, List
-from sqlmodel import Engine
+from sqlalchemy.engine import Engine
 
 from chess.engine import Score, Limit, UciProtocol
 
@@ -31,7 +31,7 @@ class Checker:
         else:
             board = chess.Board()
             moves = str(puzzle.game_pgn).split()
-            log.info(f"Checking puzzle {puzzle.id}")
+            log.info(f"Checking puzzle {puzzle.lichess_id}")
             for move in moves:
                 board.push_san(move)
             for move in str(puzzle.solution).split():

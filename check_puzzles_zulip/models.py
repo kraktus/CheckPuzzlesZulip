@@ -2,7 +2,8 @@ import chess
 
 from datetime import datetime
 from typing import Optional, TypedDict
-from sqlmodel import SQLModel, Field, create_engine, Session, select, Engine
+from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlalchemy.engine import Engine
 
 
 # TypedDict for bulk insert operations
@@ -72,7 +73,7 @@ class PuzzleReport(SQLModel, table=True):
 class Puzzle(SQLModel, table=True):
     __tablename__ = "puzzle"  # type: ignore
 
-    id: str = Field(primary_key=True, max_length=5)
+    lichess_id: str = Field(primary_key=True, max_length=5)
     initialPly: Optional[int] = None
     solution: Optional[str] = None
     themes: Optional[str] = None  # themes, separated by spaces

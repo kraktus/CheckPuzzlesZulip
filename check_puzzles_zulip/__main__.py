@@ -272,7 +272,7 @@ def check_delete_puzzles(engine: Engine) -> None:
         report_puzzle_ids = set(session.exec(statement).all())
 
         # Get all puzzle IDs from puzzles table
-        statement = select(Puzzle.id)
+        statement = select(Puzzle.lichess_id)
         existing_puzzle_ids = set(session.exec(statement).all())
 
         # Find missing puzzles
@@ -319,7 +319,7 @@ def check_delete_puzzles(engine: Engine) -> None:
         deleted_puzzles = list(session.exec(statement).all())
 
     for puzzle in deleted_puzzles:
-        log.info(f"Marking puzzle {puzzle.id} as deleted")
+        log.info(f"Marking puzzle {puzzle.lichess_id} as deleted")
         if not puzzle.is_deleted():
             puzzle.deleted_at = datetime.now()
             with Session(engine) as session:
