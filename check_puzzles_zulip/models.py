@@ -6,17 +6,9 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select
 from sqlalchemy.engine import Engine
 
 
-# TypedDict for bulk insert operations
-class PuzzleReportDict(TypedDict):
-    reporter: str
-    puzzle_id: str
-    report_version: int
-    sf_version: str
-    zulip_message_id: int
-    move: int
-    details: str
-    local_evaluation: str
-    issues: str
+from .config import STOCKFISH, setup_logger
+
+log = setup_logger(__file__)
 
 
 class PuzzleReport(SQLModel, table=True):
@@ -94,4 +86,6 @@ def setup_db(name: str) -> Engine:
     """Create and initialize database engine"""
     engine = create_engine(f"sqlite:///{name}")
     SQLModel.metadata.create_all(engine)
+    if engine.url.database:
+        log.info(f"Connected to database at {engine.url.database}")
     return engine

@@ -162,7 +162,7 @@ def migrate_database(old_db_path: str) -> None:
             deleted_at = datetime.now() if old_puzzle.is_deleted else None
 
             new_puzzle = SQLModelPuzzle(
-                id=old_puzzle._id,
+                lichess_id=old_puzzle._id,
                 initialPly=old_puzzle.initialPly,
                 solution=old_puzzle.solution,
                 themes=old_puzzle.themes,
@@ -171,11 +171,6 @@ def migrate_database(old_db_path: str) -> None:
             )
             session.add(new_puzzle)
         session.commit()
-
-    # Replace old database with new one
-    print(f"Replacing old database with new schema...")
-    old_db_path.unlink()
-    new_db_path.rename(old_db_path)
 
     print(f"Migration complete!")
     print(f"Original database backed up to: {backup_path}")

@@ -12,7 +12,7 @@ from chess.engine import Score, Cp, Mate, PovScore, InfoDict, UciProtocol
 
 from check_puzzles_zulip.config import STOCKFISH
 from check_puzzles_zulip.parser import parse_report_v5_onward
-from check_puzzles_zulip.models import PuzzleReport, PuzzleReportDict, Puzzle
+from check_puzzles_zulip.models import PuzzleReport, Puzzle
 from check_puzzles_zulip.lichess import _fetch_puzzle
 from check_puzzles_zulip.check import _similar_eval, Checker
 from check_puzzles_zulip.models import setup_db
@@ -23,7 +23,7 @@ import datetime
 
 def override_get_puzzle(p: Puzzle):
     def mock_get_puzzle(puzzle_id):
-        if puzzle_id == p.id:
+        if puzzle_id == p.lichess_id:
             return p
         else:
             raise ValueError("TEST: incorrect puzzle fetched")
@@ -191,7 +191,7 @@ class Test(unittest.TestCase):
     @unittest.skip("no need for request each time, todo mock")
     def test_fetch_puzzle(self):
         puzzle = _fetch_puzzle("3z2st")
-        self.assertEqual(puzzle.id, "3z2st")
+        self.assertEqual(puzzle.lichess_id, "3z2st")
         self.assertEqual(puzzle.initialPly, 11)
         self.assertEqual(puzzle.solution, "d5c6 e4c3 c6b7 c3b5 c1d2")
         self.assertEqual(
@@ -303,7 +303,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         )
         # XGeME,8/R4p2/4pk2/1PK5/3P4/8/1r6/8 b - - 4 44,f6g6 a7a4,2520,102,90,1112,crushing defensiveMove endgame oneMove rookEndgame,https://lichess.org/EVh4X0N2/black#88,
         puzzle_mock = Puzzle(
-            id="XGeME",
+            lichess_id="XGeME",
             initialPly=87,
             solution="f6g6 a7a4",
             themes="crushing defensiveMove endgame oneMove rookEndgame",
@@ -328,7 +328,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             zulip_message_id="1",
         )
         mock_puzzle = Puzzle(
-            id="NtcHj",
+            lichess_id="NtcHj",
             initialPly=98,
             solution="e4e1 c2a2 a4b3 a2f2 e1g1 f2f3",
             themes="crushing endgame long master rookEndgame",
@@ -353,7 +353,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
             zulip_message_id="1",
         )
         puzzle_mock = Puzzle(
-            id="5YpsY",
+            lichess_id="5YpsY",
             initialPly=61,
             solution="e5e4 g2g3 h4h6 h8g8 f7f6 d8d6 f6g5 g8d8",
             themes="clearance crushing endgame master pin veryLong",
@@ -379,7 +379,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         )
 
         puzzle_mock = Puzzle(
-            id="2F0QF",
+            lichess_id="2F0QF",
             initialPly=68,
             solution="c8c7 a3f3 g2h2 f3f2 h2h3 f2f1 h3h4 f1h1",
             themes="endgame",

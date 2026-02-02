@@ -60,24 +60,13 @@ def fetch_reports(engine: Engine) -> None:
 
     inserted_count = 0
     with Session(engine) as session:
-        for report_dict in reports:
+        for report in reports:
             # Check if report already exists
             statement = select(PuzzleReport).where(
-                PuzzleReport.zulip_message_id == str(report_dict["zulip_message_id"])
+                PuzzleReport.zulip_message_id == report.zulip_message_id
             )
             existing = session.exec(statement).first()
             if existing is None:
-                # Convert dict to PuzzleReport object
-                report = PuzzleReport(
-                    zulip_message_id=str(report_dict["zulip_message_id"]),
-                    reporter=report_dict["reporter"],
-                    puzzle_id=report_dict["puzzle_id"],
-                    report_version=report_dict["report_version"],
-                    sf_version=report_dict["sf_version"],
-                    move=report_dict["move"],
-                    details=report_dict["details"],
-                    local_evaluation=report_dict["local_evaluation"],
-                )
                 session.add(report)
                 inserted_count += 1
         session.commit()
