@@ -57,7 +57,7 @@ class CachedEngine(UciProtocol):
         self.__diskette_dir = Path("diskettes")
         self.__diskette_dir.mkdir(exist_ok=True)
 
-    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]: # type: ignore
+    async def analyse(self, *args, **kwargs) -> Union[List[InfoDict], InfoDict]:  # type: ignore
         checksum_arg = get_checksum_args(self, *args, **kwargs)
         checksum = zlib.adler32(checksum_arg)
         self.__used_checksums.add(checksum)
@@ -283,7 +283,7 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         self.transport = transport
         self.chess_engine = chess_engine
         self.dt_now = lambda: datetime.datetime(2024, 1, 1)
-        self.checker = Checker(chess_engine, self.db_engine,dt_now=self.dt_now)
+        self.checker = Checker(chess_engine, self.db_engine, dt_now=self.dt_now)
 
     async def asyncTearDown(self):
         await self.chess_engine.quit()

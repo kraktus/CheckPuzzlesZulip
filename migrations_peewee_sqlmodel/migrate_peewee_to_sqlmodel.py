@@ -43,7 +43,6 @@ from check_puzzles_zulip.models import (
     Puzzle as SQLModelPuzzle,
 )
 
-
 # Peewee models for reading old database
 old_db = SqliteDatabase(None)
 
@@ -136,9 +135,7 @@ def migrate_database(old_db_path: str) -> None:
             is_deleted_from_lichess = (
                 datetime.now() if old_report.is_deleted_from_lichess else None
             )
-            checked_at = (
-                datetime.now() if old_report.checked else None
-            )
+            checked_at = datetime.now() if old_report.checked else None
 
             new_report = SQLModelPuzzleReport(
                 zulip_message_id=str(old_report.zulip_message_id),

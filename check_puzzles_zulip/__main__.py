@@ -191,14 +191,18 @@ def export_reports(engine: Engine) -> None:
 def reset_argparse(args, engine: Engine) -> None:
     """Reset all reports to unchecked"""
     with Session(engine) as session:
-        statement = select(PuzzleReport).where(col(PuzzleReport.checked_at).is_not(None))
+        statement = select(PuzzleReport).where(
+            col(PuzzleReport.checked_at).is_not(None)
+        )
         nb_reports = len(list(session.exec(statement).all()))
 
     confirm = input(f"Are you sure you want to reset {nb_reports} reports? [y/N] ")
     if confirm.lower() == "y":
         if args.reports_checked:
             with Session(engine) as session:
-                statement = select(PuzzleReport).where(col(PuzzleReport.checked_at).is_not(None))
+                statement = select(PuzzleReport).where(
+                    col(PuzzleReport.checked_at).is_not(None)
+                )
                 reports = session.exec(statement).all()
                 for report in reports:
                     report.checked = False
@@ -289,24 +293,24 @@ def check_delete_puzzles(engine: Engine) -> None:
                 or_(
                     col(Puzzle.checked_at).is_(None),
                     col(Puzzle.checked_at) < twenty_four_hours_ago,
-                    col(Puzzle.deleted_at).is_not(None)
                 )
             )
+            .where(col(Puzzle.deleted_at).is_(None))
         )
         puzzles_with_issues = list(session.exec(statement).all())
-
-    nb_deleted = 0
-    for puzzle in puzzles_with_issues:
-        if is_puzzle_deleted(puzzle.lichess_id):
-            nb_deleted += 1
-            puzzle.deleted_at = utc_now()
-        puzzle.checked_at = utc_now()
-        with Session(engine) as session:
+        log.info(f"Checking {len(puzzles_with_issues)} puzzles for deletion")
+        # keep in session to avoid https://docs.sqlalchemy.org/en/20/errors.html#error-bhk3
+        nb_deleted = 0
+        for puzzle in puzzles_with_issues:
+            if is_puzzle_deleted(puzzle.lichess_id):
+                nb_deleted += 1
+                puzzle.deleted_at = utc_now()
+            puzzle.checked_at = utc_now()
             session.add(puzzle)
             session.commit()
 
-        time.sleep(0.4)  # avoid too many requests
-    log.info(f"{nb_deleted} new puzzles deleted from lichess")
+            time.sleep(0.4)  # avoid too many requests
+        log.info(f"{nb_deleted} new puzzles deleted from lichess")
 
 
 def main() -> None:
