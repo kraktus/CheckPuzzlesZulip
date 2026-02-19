@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import pprint
 import sys
 import zlib
 
@@ -68,7 +69,7 @@ class CachedEngine(UciProtocol):
         res = await super().analyse(*args, **kwargs)
         with open(path, "w") as f:
             f.write(f"#{checksum_arg}\n")
-            f.write(str(res))
+            f.write(pprint.pformat(res, indent=2))
         return res
 
     def list_unused_evals(self) -> List[int]:
@@ -365,6 +366,33 @@ class TestChecker(unittest.IsolatedAsyncioTestCase):
         assert isinstance(report2, PuzzleReport)
         self.assertTrue(report2.is_multiple_solutions_detected())
         self.assertTrue(report2.is_checked())
+
+    async def test_checker_only_one_legal_move(self):
+        # reported HjwOI because (v10, SF 18 · 15MB) after move 56. Qg4, at depth 98, multiple solutions: \n #2: h8g7 g5h5 a8h8 #4: a8d5 g5g6 d5d6 g4e6 d6e6 g6g5 h8h6
+        report = PuzzleReport(
+            reporter="xxx",
+            puzzle_id="HjwOI",
+            report_version=10,
+            sf_version="",
+            move=56,
+            details="Qg4, at depth 98, multiple solutions: \n #2: h8g7 g5h5 a8h8 #4: a8d5 g5g6 d5d6 g4e6 d6e6 g6g5 h8h6",
+            local_evaluation="",
+            zulip_message_id="1",
+        )
+        # HjwOI
+        # 103
+        # g7h8 h5g5 a7a8q d5d1 g1h2 g4g3 h2h3 d1g4 h3g2 g3f2 g2f2
+        # veryLong advancedPawn master crushing promotion endgame queenEndgame
+        puzzle_mock = Puzzle(
+            lichess_id="HjwOI",
+            initialPly=103,
+            solution="g7h8 h5g5 a7a8q d5d1 g1h2 g4g3 h2h3 d1g4 h3g2 g3f2 g2f2",
+            themes="veryLong advancedPawn master crushing promotion endgame queenEndgame",
+            game_pgn="c4 e6 Nf3 d5 g3 Nf6 Bg2 Bd6 O-O O-O d4 h6 Qc2 c6 Nbd2 Nbd7 e4 dxe4 Nxe4 Nxe4 Qxe4 Nf6 Qe2 Qc7 Rd1 b6 Ne5 Bb7 Bf4 Rfd8 Rac1 c5 d5 exd5 cxd5 Re8 Re1 Bxd5 Bxd5 Nxd5 Qf3 Nxf4 gxf4 Rad8 Nc6 Rxe1+ Rxe1 Rc8 Ne5 Re8 Re3 Bxe5 fxe5 Rxe5 Qa8+ Kh7 Rxe5 Qxe5 Qxa7 Qg5+ Kf1 Qc1+ Kg2 Qg5+ Kf1 Qf6 b3 g6 Qb7 Kg7 Kg2 h5 h3 Qe6 Kg1 Qxh3 Qxb6 Qg4+ Kf1 Qd1+ Kg2 Qd5+ Kg1 h4 Qb8 g5 a4 f5 a5 h3 Qg3 g4 a6 Kg6 a7 Kg5 Qe3+ f4 Qe7+ Kh5 Qh7+ Kg5 Qg7+ Kh5",
+        )
+        self.checker._get_puzzle = override_get_puzzle(puzzle_mock)
+        res = await self.checker.check_report(report)
+        self.assertTrue(res.get_issues() == [])
 
     async def test_checker_missing_mate_theme(self):
         # fff reported 2F0QF because (v6, SF 16 · 7MB) after move 38. Kh4, at depth 99, multiple solutions, pvs d4f3: #-1, f1h1: #-1

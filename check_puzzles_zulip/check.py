@@ -76,6 +76,9 @@ class Checker:
         infos = await self.analyse_position(board)
         eval_dump = json.dumps(infos, default=default_converter)
         log.debug(f"eval_dump {infos}")
+        if len(infos) < 2:
+            log.debug("Only one legal move, no second best evaluation")
+            return False, eval_dump
         # sort by score descending
         turn = board.turn
         infos.sort(key=lambda info: info["score"].pov(turn), reverse=True)  # type: ignore
