@@ -93,7 +93,7 @@ class Checker:
     async def analyse_position(self, board: chess.Board) -> List[chess.engine.InfoDict]:
         log.debug(f"Analyzing position {board.fen()}")
         infos = await self.chess_engine.analyse(
-            board, multipv=5, limit=Limit(depth=50, nodes=25_000_000)
+            board, multipv=5, limit=Limit(depth=50, nodes=35_000_000)
         )
         return infos
 
