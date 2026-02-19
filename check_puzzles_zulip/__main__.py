@@ -176,7 +176,8 @@ def export_reports(engine: Engine) -> None:
         statement = (
             select(PuzzleReport)
             .join(Puzzle, col(Puzzle.lichess_id) == col(PuzzleReport.puzzle_id))
-            .where(PuzzleReport.has_issues_cond())
+            # we only care about multiple solutions for exporting
+            .where(col(PuzzleReport.has_multiple_solutions).is_not(None))
             .where(col(Puzzle.deleted_at).is_(None))
         )
         reports = list(session.exec(statement).all())
